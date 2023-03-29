@@ -32,11 +32,6 @@ public class LaunchInstructions {
 
   public static void main(String[] args) {
     try {
-      // This is called just to make sure there's a valid data dir
-      AppUtil.getAppHome();
-      // Initialize the first logger with the correct log path
-      AppUtil.initLogging();
-
       long mem = Runtime.getRuntime().maxMemory();
       String msg = String.format(USAGE, mem / (1024 * 1024));
 
@@ -47,6 +42,13 @@ public class LaunchInstructions {
       if (mem < 200 * 1024 * 1024) {
         JOptionPane.showMessageDialog(new JFrame(), msg, "Usage", JOptionPane.INFORMATION_MESSAGE);
       }
+
+      // The definition of DataDir & LogDir can be overwritten in the app properties
+      AppProperties.initialize(args);
+      // Getting sure, that DataDir & LogDir exists
+      AppUtil.initializeMainDirs();
+      // Initialize the first loggers after log path exists
+      AppUtil.initializeFirstLoggers();
 
       MapTool.main(args);
 

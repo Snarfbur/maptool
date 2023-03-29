@@ -104,23 +104,14 @@ import net.rptools.maptool.server.ServerConfig;
 import net.rptools.maptool.server.ServerPolicy;
 import net.rptools.maptool.transfer.AssetTransferManager;
 import net.rptools.maptool.util.MessageUtil;
-import net.rptools.maptool.util.StringUtil;
 import net.rptools.maptool.util.UPnPUtil;
 import net.rptools.maptool.util.UserJvmOptions;
 import net.rptools.maptool.webapi.MTWebAppServer;
 import net.rptools.parser.ParserException;
 import net.tsc.servicediscovery.ServiceAnnouncer;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.Appender;
-import org.apache.logging.log4j.core.appender.FileAppender;
-import org.apache.logging.log4j.core.appender.RollingFileAppender;
 import org.apache.logging.log4j.core.config.Configurator;
 
 /** */
@@ -148,8 +139,10 @@ public class MapTool {
 
   private static ThumbnailManager thumbnailManager;
   private static String version = "DEVELOPMENT";
-  private static String vendor = "RPTools!"; // Default, will get from JAR Manifest during normal
-  // runtime
+
+  private static final String DEVELOPMENT_VERSION = "DEVELOPMENT";
+  private static final String FALLBACK_VERSION = "DEVELOPMENT";
+  private static final String FALLBACK_VENDOR = "RPTools!";
 
   private static Campaign campaign;
 
@@ -176,14 +169,6 @@ public class MapTool {
 
   private static final MTWebAppServer webAppServer = new MTWebAppServer();
 
-  // Jamz: To support new command line parameters for multi-monitor support & enhanced PrintStream
-  private static boolean debug = false;
-  private static int graphicsMonitor = -1;
-  private static boolean useFullScreen = false;
-  private static int windowWidth = -1;
-  private static int windowHeight = -1;
-  private static int windowX = -1;
-  private static int windowY = -1;
   private static String loadCampaignOnStartPath = "";
 
   public static Dimension getThumbnailSize() {
@@ -592,10 +577,9 @@ public class MapTool {
    */
   private static void setClientFrame(MapToolFrame frame) {
     clientFrame = frame;
-
-    if (graphicsMonitor > -1) {
-      moveToMonitor(clientFrame, graphicsMonitor, useFullScreen);
-    } else if (useFullScreen) {
+    if (AppProperties.getMonitorToUse() > -1) {
+      moveToMonitor(clientFrame, AppProperties.getMonitorToUse(), AppProperties.getFullscreenFlag());
+    } else if (AppProperties.getFullscreenFlag()) {
       frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
   }
@@ -615,14 +599,13 @@ public class MapTool {
     GraphicsDevice[] gd = ge.getScreenDevices();
 
     if (monitor > -1 && monitor < gd.length) {
-      if (windowWidth > -1 && windowHeight > -1) {
-        frame.setSize(windowWidth, windowHeight);
+      if (AppProperties.getWindowWidth() > -1 && AppProperties.getWindowHeight() > -1) {
+        frame.setSize(AppProperties.getWindowWidth(), AppProperties.getWindowHeight());
       }
-
-      if (windowX > -1 && windowY > -1) {
+      if (AppProperties.getWindowXpos() > -1 && AppProperties.getWindowYpos() > -1) {
         frame.setLocation(
-            windowX + gd[monitor].getDefaultConfiguration().getBounds().x,
-            windowY + gd[monitor].getDefaultConfiguration().getBounds().y);
+            AppProperties.getWindowXpos() + gd[monitor].getDefaultConfiguration().getBounds().x,
+            AppProperties.getWindowYpos() + gd[monitor].getDefaultConfiguration().getBounds().y);
 
       } else {
         frame.setLocation(gd[monitor].getDefaultConfiguration().getBounds().x, frame.getY());
@@ -722,15 +705,59 @@ public class MapTool {
     return logConsoleFrame;
   }
 
+  private static void initializeVersion() {
+    String versionImplementation = version;
+    String versionOverride = AppProperties.getVersionOverwrite();
+
+    if (MapTool.class.getPackage().getImplementationVersion() != null) {
+      versionImplementation = MapTool.class.getPackage().getImplementationVersion().trim();
+      log.info("getting MapTool version from manifest: " + versionImplementation);
+    } else {
+      versionImplementation = FALLBACK_VERSION;
+    }
+
+    if (AppProperties.getVersionOverwrite() != null) {
+      log.info("overriding MapTool version from command line to: " + versionOverride);
+      version = versionOverride;
+    } else {
+      version = versionImplementation;
+    }
+    log.info("MapTool version: " + version);
+
+    // Set MapTool version in sentry
+    sentry.setRelease(getVersion());
+    sentry.addTag("os", System.getProperty("os.name"));
+    sentry.addTag("version", MapTool.getVersion());
+    sentry.addTag("versionImplementation", versionImplementation);
+    sentry.addTag("versionOverride", versionOverride);
+  }
+
   public static String getVersion() {
     return version;
   }
 
   public static boolean isDevelopment() {
-    return "DEVELOPMENT".equals(version)
+    return DEVELOPMENT_VERSION.equals(version)
         || "@buildNumber@".equals(version)
         || "0.0.1".equals(version)
         || (version != null && version.startsWith("SNAPSHOT"));
+  }
+
+  /**
+   * The Vendor is defined in the JAR Manifest.
+   * As a fallback "RPTools" will be used.
+   * @return The Vendor as defined in the JAR Manifest or the defined fallback vendor.
+   */
+  private static String getVendor(){
+    String vendor;
+    if (MapTool.class.getPackage().getImplementationVendor() != null) {
+      vendor = MapTool.class.getPackage().getImplementationVendor().trim();
+      log.info("getting MapTool vendor from manifest:  " + vendor);
+    } else {
+      vendor = FALLBACK_VENDOR;
+      log.info("getting MapTool vendor from manifest not possible:  " + vendor);
+    }
+    return vendor;
   }
 
   public static ServerPolicy getServerPolicy() {
@@ -1456,56 +1483,6 @@ public class MapTool {
     }
   }
 
-  /**
-   * Search for command line arguments for options. Expecting arguments specified as
-   * -parameter=value pair and returns a string.
-   *
-   * <p>Examples: -version=1.4.0.1 -user=Jamz
-   *
-   * @param cmd {@link org.apache.commons.cli.Options}
-   * @param searchValue Option string to search for, ie -version
-   * @param defaultValue A default value to return if option is not found
-   * @return Option value found as a String, or defaultValue if not found
-   * @author Jamz
-   * @since 1.5.12
-   */
-  private static String getCommandLineOption(
-      CommandLine cmd, String searchValue, String defaultValue) {
-    return cmd.hasOption(searchValue) ? cmd.getOptionValue(searchValue) : defaultValue;
-  }
-
-  /**
-   * Search for command line arguments for options. Expecting arguments formatted as a switch
-   *
-   * <p>Examples: -x or -fullscreen
-   *
-   * @param cmd {@link org.apache.commons.cli.Options}
-   * @param searchValue Option string to search for, ie -version
-   * @return A boolean value of true if option parameter found
-   * @author Jamz
-   * @since 1.5.12
-   */
-  private static boolean getCommandLineOption(CommandLine cmd, String searchValue) {
-    return cmd.hasOption(searchValue);
-  }
-
-  /**
-   * Search for command line arguments for options. Expecting arguments specified as
-   * -parameter=value pair and returns a string.
-   *
-   * <p>Examples: -monitor=1 -x=0 -y=0 -w=1200 -h=960
-   *
-   * @param cmd {@link org.apache.commons.cli.Options}
-   * @param searchValue Option string to search for, ie -version
-   * @param defaultValue A default value to return if option is not found
-   * @return Int value of the matching option parameter if found
-   * @author Jamz
-   * @since 1.5.12
-   */
-  private static int getCommandLineOption(CommandLine cmd, String searchValue, int defaultValue) {
-    return StringUtil.parseInteger(cmd.getOptionValue(searchValue), defaultValue);
-  }
-
   /** An example method that throws an exception. */
   static void unsafeMethod() {
     throw new UnsupportedOperationException("You shouldn't call this either!");
@@ -1543,32 +1520,7 @@ public class MapTool {
     }
   }
 
-  public static String getLoggerFileName() {
-    org.apache.logging.log4j.core.Logger loggerImpl = (org.apache.logging.log4j.core.Logger) log;
-    Appender appender = loggerImpl.getAppenders().get("LogFile");
-
-    if (appender != null) {
-      if (appender instanceof FileAppender) {
-        return ((FileAppender) appender).getFileName();
-      } else if (appender instanceof RollingFileAppender) {
-        return ((RollingFileAppender) appender).getFileName();
-      }
-    }
-
-    return "NOT_CONFIGURED";
-  }
-
   public static void main(String[] args) {
-    log.info("********************************************************************************");
-    log.info("**                                                                            **");
-    log.info("**                              MapTool Started!                              **");
-    log.info("**                                                                            **");
-    log.info("********************************************************************************");
-    log.info("Logging to: " + getLoggerFileName());
-
-    String versionImplementation = version;
-    String versionOverride = version;
-
     if (AppUtil.MAC_OS_X) {
       // On OSX the menu bar at the top of the screen can be enabled at any time, but the
       // title (ie. name of the application) has to be set before the GUI is initialized (by
@@ -1583,114 +1535,31 @@ public class MapTool {
       System.setProperty("com.apple.mrj.application.apple.menu.about.name", "About MapTool...");
     }
 
-    if (MapTool.class.getPackage().getImplementationVersion() != null) {
-      versionImplementation = MapTool.class.getPackage().getImplementationVersion().trim();
-      log.info("getting MapTool version from manifest: " + versionImplementation);
-    }
-
-    if (MapTool.class.getPackage().getImplementationVendor() != null) {
-      vendor = MapTool.class.getPackage().getImplementationVendor().trim();
-      log.info("getting MapTool vendor from manifest:  " + vendor);
-    }
-
     // Initialize Sentry.io logging
     Sentry.init();
     sentry = SentryClientFactory.sentryClient();
     // testSentryAPI(); // purely for testing...
 
-    // Jamz: Overwrite version for testing if passed as command line argument using -v or
-    // -version
-    Options cmdOptions = new Options();
-    cmdOptions.addOption("d", "debug", false, "turn on System.out enhanced debug output");
-    cmdOptions.addOption("v", "version", true, "override MapTool version");
-    cmdOptions.addOption("m", "monitor", true, "sets which monitor to use");
-    cmdOptions.addOption("f", "fullscreen", false, "set to maximize window");
-    cmdOptions.addOption("w", "width", true, "override MapTool window width");
-    cmdOptions.addOption("h", "height", true, "override MapTool window height");
-    cmdOptions.addOption("x", "xpos", true, "override MapTool window starting x coordinate");
-    cmdOptions.addOption("y", "ypos", true, "override MapTool window starting y coordinate");
-    cmdOptions.addOption("m", "macros", false, "display defined list of macro functions");
-    cmdOptions.addOption("r", "reset", false, "reset startup options to defaults");
-    cmdOptions.addOption("F", "file", true, "load campaign on startup");
+    // Initialize Version
+    initializeVersion();
 
-    CommandLineParser cmdParser = new DefaultParser();
-    CommandLine cmd = null;
-    boolean listMacros = false;
+    // Log Vendor
+    log.info("MapTool vendor: " + getVendor());
 
-    try {
-      cmd = cmdParser.parse(cmdOptions, args);
-
-      debug = getCommandLineOption(cmd, "debug");
-      versionOverride = getCommandLineOption(cmd, "version", version);
-      graphicsMonitor = getCommandLineOption(cmd, "monitor", graphicsMonitor);
-      useFullScreen = getCommandLineOption(cmd, "fullscreen");
-
-      windowWidth = getCommandLineOption(cmd, "width", windowWidth);
-      windowHeight = getCommandLineOption(cmd, "height", windowHeight);
-      windowX = getCommandLineOption(cmd, "xpos", windowX);
-      windowY = getCommandLineOption(cmd, "ypos", windowY);
-
-      loadCampaignOnStartPath = getCommandLineOption(cmd, "file", "");
-      listMacros = getCommandLineOption(cmd, "macros");
-
-      if (getCommandLineOption(cmd, "reset")) {
-        UserJvmOptions.resetJvmOptions();
-      }
-    } catch (ParseException e) {
-      // MapTool.showWarning() can be invoked here.  It will log the stacktrace,
-      // so there's no need for us to do it.
-      MapTool.showWarning("Error parsing the command line", e);
-    }
-
-    // Jamz: Just a little console log formatter for system.out to hyperlink messages to source.
-    if (debug) {
+    // Developer Options
+    if (AppProperties.getResetFlag()) UserJvmOptions.resetJvmOptions();
+    if (AppProperties.getDebugFlag()) {
+      // Jamz: Just a little console log formatter for system.out to hyperlink messages to source.
       Configurator.setRootLevel(Level.DEBUG);
       DebugStream.activate();
     } else {
       DebugStream.deactivate();
     }
+    if (AppProperties.getListMacrosFlag()) listMacros();
 
-    // List out passed in arguments
-    for (String arg : args) {
-      log.info("argument passed via command line: " + arg);
-    }
+    // Log, if a specific campaign should be loaded at startup
+    if (AppProperties.getLoadCompaignName() != null) log.info("Loading initial campaign: " + AppProperties.getLoadCompaignName());
 
-    if (cmd.hasOption("version")) {
-      log.info("overriding MapTool version from command line to: " + versionOverride);
-      version = versionOverride;
-    } else {
-      version = versionImplementation;
-      log.info("MapTool version: " + version);
-    }
-
-    log.info("MapTool vendor: " + vendor);
-
-    if (cmd.getArgs().length != 0) {
-      log.info("Overriding -F option with extra argument");
-      loadCampaignOnStartPath = cmd.getArgs()[0];
-    }
-    if (!loadCampaignOnStartPath.isEmpty()) {
-      log.info("Loading initial campaign: " + loadCampaignOnStartPath);
-    }
-
-    // Set MapTool version
-    sentry.setRelease(getVersion());
-    sentry.addTag("os", System.getProperty("os.name"));
-    sentry.addTag("version", MapTool.getVersion());
-    sentry.addTag("versionImplementation", versionImplementation);
-    sentry.addTag("versionOverride", versionOverride);
-
-    if (listMacros) {
-      StringBuilder logOutput = new StringBuilder();
-      List<String> macroList = new ArrayList<>(parser.listAllMacroFunctions().keySet());
-      Collections.sort(macroList);
-
-      for (String macro : macroList) {
-        logOutput.append("\n").append(macro);
-      }
-
-      log.info("Current list of Macro Functions: " + logOutput);
-    }
 
     // System properties
     System.setProperty("swing.aatext", "true");
@@ -1789,5 +1658,15 @@ public class MapTool {
               });
         });
     // new Thread(new HeapSpy()).start();
+  }
+
+  private static void listMacros(){
+    StringBuilder logOutput = new StringBuilder();
+    List<String> macroList = new ArrayList<>(parser.listAllMacroFunctions().keySet());
+    Collections.sort(macroList);
+
+    for (String macro : macroList) logOutput.append("\n").append(macro);
+
+    log.info("Current list of Macro Functions: " + logOutput);
   }
 }

@@ -54,6 +54,7 @@ public class UserJvmOptions {
 
   public static void resetJvmOptions() {
     log.info("Resetting all startup options to defaults!");
+    loadAppCfg();
 
     setJvmOption(JVM_OPTION.MAX_MEM, "");
     setJvmOption(JVM_OPTION.MIN_MEM, "");

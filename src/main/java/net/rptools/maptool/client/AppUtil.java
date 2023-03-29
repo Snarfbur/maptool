@@ -36,53 +36,101 @@ import net.rptools.maptool.model.player.Player;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Logger;import org.apache.logging.log4j.core.Appender;import org.apache.logging.log4j.core.appender.FileAppender;import org.apache.logging.log4j.core.appender.RollingFileAppender;
 
 /** This class provides utility functions for maptool client. */
 public class AppUtil {
-  public static final String DEFAULT_DATADIR_NAME = ".maptool";
-  public static final String DATADIR_PROPERTY_NAME = "MAPTOOL_DATADIR";
-  public static final String LOGDIR_PROPERTY_NAME = "MAPTOOL_LOGDIR";
+
   private static final String CLIENT_ID_FILE = "client-id";
-  private static final String CONFIG_SUB_DIR = "config";
   private static final String APP_HOME_CONFIG_FILENAME = "maptool.cfg";
+
   public static final ScheduledExecutorService fileCheckExecutor =
       new ScheduledThreadPoolExecutor(1);
 
   private static Logger log;
 
-  /** Returns true if currently running on a Windows based operating system. */
-  public static boolean WINDOWS =
-      (System.getProperty("os.name").toLowerCase().startsWith("windows"));
-  /** Returns true if currently running on a Mac OS X based operating system. */
-  public static boolean MAC_OS_X =
-      (System.getProperty("os.name").toLowerCase().startsWith("mac os x"));
+  /** Returns true if currently running on a Windows based operating system.
+   * @deprecated Its a property for the app, so please use AppProperties.isWindowsOs() direct.
+   */
+  @Deprecated
+  public static boolean WINDOWS = AppProperties.isWindowsOs();
 
-  /** Returns true if currently running on Linux or other Unix/Unix like system. */
-  public static boolean LINUX_OR_UNIX =
-      (System.getProperty("os.name").indexOf("nix") >= 0
-          || System.getProperty("os.name").indexOf("nux") >= 0
-          || System.getProperty("os.name").indexOf("aix") >= 0
-          || System.getProperty("os.name").indexOf("sunos") >= 0);
+  /** Returns true if currently running on a Mac OS X based operating system.
+   * @deprecated Its a property for the app, so please use AppProperties.isMacOs() direct.
+   */
+  @Deprecated
+  public static boolean MAC_OS_X = AppProperties.isMacOs();
 
+  /** Returns true if currently running on Linux or other Unix/Unix like system.
+   * @deprecated Its a property for the app, so please use AppProperties.isUnixOs() direct.
+   */
+  @Deprecated
+  public static boolean LINUX_OR_UNIX = AppProperties.isUnixOs();
+
+  /**
+   * @deprecated Not used anywhere? If usefull later, please set comment, otherwise remove it
+   */
+  @Deprecated
   public static final String LOOK_AND_FEEL_NAME =
       MAC_OS_X
           ? "net.rptools.maptool.client.TinyLookAndFeelMac"
           : "de.muntjak.tinylookandfeel.TinyLookAndFeel";
 
-  private static File dataDirPath;
+  private static File appHome;
+
   private static String packagerCfgFileName =
       getAttributeFromJarManifest("Implementation-Title", AppConstants.APP_NAME) != null
           ? getAttributeFromJarManifest("Implementation-Title", AppConstants.APP_NAME) + ".cfg"
           : null;
 
-  /** Sets the MAPTOOL_LOGDIR system property and initializes the first logger. */
-  public static void initLogging() {
-    if (log == null) {
-      // Note: This property MUST be set before the logger is initialized
-      System.setProperty(LOGDIR_PROPERTY_NAME, getAppHome("logs").getAbsolutePath());
-      log = LogManager.getLogger(AppUtil.class);
+  /**
+   * Initialize the main directories DataDir & LogDir
+   * This is be done only once!
+   *
+   *  <p>As a side-effect the function creates the directories if not exits.
+   */
+  public static void initializeMainDirs() {
+    if (appHome != null) return; // Initialize only once!
+    appHome = new File(AppProperties.getDataDirName());
+    if (!appHome.exists()) createDir(appHome);
+    File logsHome = new File (AppProperties.getLogDirName());
+    if (!logsHome.exists()) createDir(logsHome);
+  }
+
+  /** Initializes the first loggers.
+   * This is be done only once!
+   *
+   * During startup some classes have to be initialized before logging is possible.
+   * This can now establish a logger and maybe log some saved information over the starting phase.
+   */
+  public static void initializeFirstLoggers() {
+    if (log != null) return; // Initialize only once
+
+    log = LogManager.getLogger(AppUtil.class);
+
+    log.info("********************************************************************************");
+    log.info("**                                                                            **");
+    log.info("**                              MapTool Started!                              **");
+    log.info("**                                                                            **");
+    log.info("********************************************************************************");
+    log.info("Logging to: " + getLoggerFileName());
+
+    AppProperties.initializeLoggers();
+  }
+
+  public static String getLoggerFileName() {
+    org.apache.logging.log4j.core.Logger loggerImpl = (org.apache.logging.log4j.core.Logger) log;
+    Appender appender = loggerImpl.getAppenders().get("LogFile");
+
+    if (appender != null) {
+      if (appender instanceof FileAppender) {
+        return ((FileAppender) appender).getFileName();
+      } else if (appender instanceof RollingFileAppender) {
+        return ((RollingFileAppender) appender).getFileName();
+      }
     }
+
+    return "NOT_CONFIGURED";
   }
 
   /**
@@ -91,8 +139,37 @@ public class AppUtil {
    * @return the users home directory as a File object
    */
   private static File getUserHome() {
-    return new File(System.getProperty("user.home"));
+    return new File(AppProperties.getUserHomeName());
   }
+
+  private static void createDir(File path) {
+    if (!path.exists()) {
+      path.mkdirs();
+      // Now check our work
+      if (!path.exists()) {
+        RuntimeException re =
+                new RuntimeException(
+                        I18N.getText("msg.error.unableToCreateDataDir", path.getAbsolutePath()));
+        if (log != null && log.isInfoEnabled()) {
+          log.info("msg.error.unableToCreateDataDir", re);
+        }
+        throw re;
+      }
+    }
+  }
+
+  /**
+   * Returns a File path representing the base directory to store local data. By default this is a
+   * ".maptool" directory in the user's home directory.
+   *
+   * <p>If you want to change the dir for data storage you can set the system property
+   * MAPTOOL_DATADIR. If the value of the MAPTOOL_DATADIR has any file separator characters in it,
+   * it will assume you are using an absolute path. If the path does not include a file separator it
+   * will use it as a subdirectory in the user's home directory
+   *
+   * @return the maptool data directory
+   */
+  public static File getAppHome() { return appHome; }
 
   /**
    * Returns a {@link File} path that points to the AppHome base directory along with the subpath
@@ -108,77 +185,19 @@ public class AppUtil {
    * @see AppUtil#getAppHome
    */
   public static File getAppHome(String subdir) {
-    File path = getDataDir();
-    if (!StringUtils.isEmpty(subdir)) {
-      path = new File(path.getAbsolutePath(), subdir);
-    }
-    // Now check for characters known to cause problems. See getDataDir() for details.
-    if (path.getAbsolutePath().matches("!")) {
-      throw new RuntimeException(I18N.getText("msg.error.unusableDir", path.getAbsolutePath()));
-    }
-
-    if (!path.exists()) {
-      path.mkdirs();
-      // Now check our work
-      if (!path.exists()) {
-        RuntimeException re =
-            new RuntimeException(
-                I18N.getText("msg.error.unableToCreateDataDir", path.getAbsolutePath()));
-        if (log != null && log.isInfoEnabled()) {
-          log.info("msg.error.unableToCreateDataDir", re);
-        }
-        throw re;
-      }
-    }
+    File path = getAppHome();
+    if (!StringUtils.isEmpty(subdir)) path = new File(path.getAbsolutePath(), subdir);
+    if (!path.exists()) createDir(path);
     return path;
   }
 
-  /** Set the state back to uninitialized */
-  // Package protected for testing
-  static void reset() {
-    dataDirPath = null;
-  }
-
-  /** Determine the actual directory to store data files, derived from the environment */
-  // Package protected for testing
-  static File getDataDir() {
-    if (dataDirPath == null) {
-      String path = System.getProperty(DATADIR_PROPERTY_NAME);
-      if (StringUtils.isEmpty(path)) {
-        path = DEFAULT_DATADIR_NAME;
-      }
-      if (!path.contains("/") && !path.contains("\\")) {
-        path = getUserHome() + "/" + path;
-      }
-      // Now we need to check for characters that are known to cause problems in
-      // path names. We want to allow the local platform to make this decision, but
-      // the built-in "jar://" URL uses the "!" as a separator between the archive name
-      // and the archive member. :( Right now we're only checking for that one character
-      // but the list may need to be expanded in the future.
-      if (path.matches("!")) {
-        throw new RuntimeException(I18N.getText("msg.error.unusableDataDir", path));
-      }
-
-      dataDirPath = new File(path);
-    }
-    return dataDirPath;
-  }
-
-  /**
-   * Returns a File path representing the base directory to store local data. By default this is a
-   * ".maptool" directory in the user's home directory.
-   *
-   * <p>If you want to change the dir for data storage you can set the system property
-   * MAPTOOL_DATADIR. If the value of the MAPTOOL_DATADIR has any file separator characters in it,
-   * it will assume you are using an absolute path. If the path does not include a file separator it
-   * will use it as a subdirectory in the user's home directory
-   *
-   * <p>As a side-effect the function creates the directory pointed to by File.
-   *
-   * @return the maptool data directory
+  /** Set the state back to uninitialized
+   * @deprecated Not in use ?
    */
-  public static File getAppHome() {
-    return getAppHome("");
+  // Package protected for testing
+  @Deprecated
+  static void reset() {
+    appHome = null;
   }
 
   /**
@@ -229,13 +248,15 @@ public class AppUtil {
 
     return cfgFile;
   }
+
   /**
    * Returns a File path representing configuration file under the app home directory structure.
    *
    * @return the maptool configuration file under the app home directory structure.
    */
   public static File getDataDirAppCfgFile() {
-    return getAppHome(CONFIG_SUB_DIR).toPath().resolve(APP_HOME_CONFIG_FILENAME).toFile();
+    // Temp old code:
+    return getAppHome(AppProperties.getConfigSubDirName()).toPath().resolve(APP_HOME_CONFIG_FILENAME).toFile();
   }
 
   /**
@@ -266,8 +287,13 @@ public class AppUtil {
    * @return the maptool tmp directory
    */
   public static File getTmpDir() {
-    return getAppHome("tmp");
+    return getAppHome(AppProperties.getTmpSubDirName());
   }
+
+
+  //
+  // ToDo: Refactor into 2 classes: The methods above and below this line do not have a common theme, but each of them represents a subject area.
+  //
 
   /**
    * Returns true if the player owns the token, otherwise false. If the player is GM this function
