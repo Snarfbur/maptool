@@ -578,7 +578,8 @@ public class MapTool {
   private static void setClientFrame(MapToolFrame frame) {
     clientFrame = frame;
     if (AppProperties.getMonitorToUse() > -1) {
-      moveToMonitor(clientFrame, AppProperties.getMonitorToUse(), AppProperties.getFullscreenFlag());
+      moveToMonitor(
+          clientFrame, AppProperties.getMonitorToUse(), AppProperties.getFullscreenFlag());
     } else if (AppProperties.getFullscreenFlag()) {
       frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
@@ -744,11 +745,11 @@ public class MapTool {
   }
 
   /**
-   * The Vendor is defined in the JAR Manifest.
-   * As a fallback "RPTools" will be used.
+   * The Vendor is defined in the JAR Manifest. As a fallback "RPTools" will be used.
+   *
    * @return The Vendor as defined in the JAR Manifest or the defined fallback vendor.
    */
-  private static String getVendor(){
+  private static String getVendor() {
     String vendor;
     if (MapTool.class.getPackage().getImplementationVendor() != null) {
       vendor = MapTool.class.getPackage().getImplementationVendor().trim();
@@ -1558,8 +1559,8 @@ public class MapTool {
     if (AppProperties.getListMacrosFlag()) listMacros();
 
     // Log, if a specific campaign should be loaded at startup
-    if (AppProperties.getLoadCompaignName() != null) log.info("Loading initial campaign: " + AppProperties.getLoadCompaignName());
-
+    if (AppProperties.getLoadCompaignName() != null)
+      log.info("Loading initial campaign: " + AppProperties.getLoadCompaignName());
 
     // System properties
     System.setProperty("swing.aatext", "true");
@@ -1622,7 +1623,7 @@ public class MapTool {
       System.exit(1);
     }
 
-    /**
+    /*
      * This is a tweak that makes the Chinese version work better.
      *
      * <p>Consider reviewing <a href="http://en.wikipedia.org/wiki/CJK_characters" >http://en.
@@ -1660,7 +1661,7 @@ public class MapTool {
     // new Thread(new HeapSpy()).start();
   }
 
-  private static void listMacros(){
+  private static void listMacros() {
     StringBuilder logOutput = new StringBuilder();
     List<String> macroList = new ArrayList<>(parser.listAllMacroFunctions().keySet());
     Collections.sort(macroList);

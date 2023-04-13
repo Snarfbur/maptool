@@ -14,16 +14,17 @@
  */
 package net.rptools.maptool.client;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import net.rptools.maptool.util.StringUtil;
 import org.apache.commons.cli.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-
 public class AppCmdLineProperties {
 
   private static Logger log;
-
+ 
   private static Options cmdOptions;
   private static CommandLine cmd;
   private static String[] cmdLineArgs;
@@ -31,52 +32,119 @@ public class AppCmdLineProperties {
   public static void initialize(String[] args) {
     cmdLineArgs = args;
     cmdOptions = new Options();
-    cmdOptions.addOption("?", AppProperties.PROPS.CMD_OPTIONS_HELP.getCmdLongOpt(), false, "list of options incl. description to log and information frame, then exit the application");
-    cmdOptions.addOption("d", AppProperties.PROPS.DEBUG_FLAG.getCmdLongOpt(), false, "turn on System.out enhanced debug output");
-    cmdOptions.addOption("v", AppProperties.PROPS.VERSION_OVERWRITE.getCmdLongOpt(), true, "override MapTool version");
-    cmdOptions.addOption("f", AppProperties.PROPS.FULLSCREEN.getCmdLongOpt(), false, "set to maximize window");
-    cmdOptions.addOption("g", AppProperties.PROPS.MONITOR_TO_USE.getCmdLongOpt(), true, "sets which monitor (graphical device) to use");
-    cmdOptions.addOption("w", AppProperties.PROPS.WINDOW_WIDTH.getCmdLongOpt(), true, "override MapTool window width. Only usable together with monitor and height");
-    cmdOptions.addOption("h", AppProperties.PROPS.WINDOW_HEIGHT.getCmdLongOpt(), true, "override MapTool window height. Only usable together with monitor and width");
-    cmdOptions.addOption("x", AppProperties.PROPS.WINDOW_XPOS.getCmdLongOpt(), true, "override MapTool window starting x coordinate. Only usable together with monitor and ypos");
-    cmdOptions.addOption("y", AppProperties.PROPS.WINDOW_YPOS.getCmdLongOpt(), true, "override MapTool window starting y coordinate. Only usable together with monitor and xpos");
-    cmdOptions.addOption("m", AppProperties.PROPS.LIST_MACROS_FLAG.getCmdLongOpt(), false, "display defined list of macro functions");
-    cmdOptions.addOption("r", AppProperties.PROPS.RESET_FLAG.getCmdLongOpt(), false, "reset startup options to defaults");
-    cmdOptions.addOption("F", AppProperties.PROPS.DEPRECATED_LOAD_CAMPAIGN_NAME.getCmdLongOpt(), true, "load campaign on startup. Deprecated: Please use C or campaign");
-    cmdOptions.addOption("C", AppProperties.PROPS.LOAD_CAMPAIGN_NAME.getCmdLongOpt(), true, "load campaign on startup. Arg.: Full file path and name of the campaign");
-    cmdOptions.addOption("S", AppProperties.PROPS.LOAD_SERVER.getCmdLongOpt(), false, "start server on startup. Using server parameters from ???");
-    cmdOptions.addOption("D", AppProperties.PROPS.DATA_DIR_NAME.getCmdLongOpt(), true, "override MapTool data dictionary");
+    cmdOptions.addOption(
+        "?",
+        AppProperties.PROPS.CMD_OPTIONS_HELP.getCmdLongOpt(),
+        false,
+        "list of options incl. description to log and information frame, then exit the application");
+    cmdOptions.addOption(
+        "d",
+        AppProperties.PROPS.DEBUG_FLAG.getCmdLongOpt(),
+        false,
+        "turn on System.out enhanced debug output");
+    cmdOptions.addOption(
+        "v",
+        AppProperties.PROPS.VERSION_OVERWRITE.getCmdLongOpt(),
+        true,
+        "override MapTool version. Some MapTool functions will break if the version is not set correct!");
+    cmdOptions.addOption(
+        "f", AppProperties.PROPS.FULLSCREEN_FLAG.getCmdLongOpt(), false, "set to maximize window");
+    cmdOptions.addOption(
+        "g",
+        AppProperties.PROPS.MONITOR_TO_USE.getCmdLongOpt(),
+        true,
+        "sets which monitor (graphical device) to use");
+    cmdOptions.addOption(
+        "w",
+        AppProperties.PROPS.WINDOW_WIDTH.getCmdLongOpt(),
+        true,
+        "override MapTool window width. Only usable together with monitor and height");
+    cmdOptions.addOption(
+        "h",
+        AppProperties.PROPS.WINDOW_HEIGHT.getCmdLongOpt(),
+        true,
+        "override MapTool window height. Only usable together with monitor and width");
+    cmdOptions.addOption(
+        "x",
+        AppProperties.PROPS.WINDOW_XPOS.getCmdLongOpt(),
+        true,
+        "override MapTool window starting x coordinate. Only usable together with monitor and ypos");
+    cmdOptions.addOption(
+        "y",
+        AppProperties.PROPS.WINDOW_YPOS.getCmdLongOpt(),
+        true,
+        "override MapTool window starting y coordinate. Only usable together with monitor and xpos");
+    cmdOptions.addOption(
+        "m",
+        AppProperties.PROPS.LIST_MACROS_FLAG.getCmdLongOpt(),
+        false,
+        "display defined list of macro functions");
+    cmdOptions.addOption(
+        "r",
+        AppProperties.PROPS.RESET_FLAG.getCmdLongOpt(),
+        false,
+        "reset startup options to defaults");
+    cmdOptions.addOption(
+        "F",
+        AppProperties.PROPS.DEPRECATED_LOAD_CAMPAIGN_NAME.getCmdLongOpt(),
+        true,
+        "load campaign on startup. Deprecated: Please use C or campaign");
+    cmdOptions.addOption(
+        "C",
+        AppProperties.PROPS.LOAD_CAMPAIGN_NAME.getCmdLongOpt(),
+        true,
+        "load campaign on startup. Arg.: Full file path and name of the campaign");
+    // cmdOptions.addOption(
+    //      "S",
+    //      AppProperties.PROPS.LOAD_SERVER_FLAG.getCmdLongOpt(),
+    //      false,
+    //      "start server on startup. Using server parameters from ???");
+    cmdOptions.addOption(
+        "D",
+        AppProperties.PROPS.DATA_DIR_NAME.getCmdLongOpt(),
+        true,
+        "override MapTool data dictionary");
+    cmdOptions.addOption(
+        "P",
+        AppProperties.PROPS.STARTUP_PROPS_FILE_NAME.getCmdLongOpt(),
+        true,
+        "override name (& path) of the startup properties file");
 
     parse();
-
   }
 
   private static void parse() {
     CommandLineParser cmdParser = new DefaultParser();
     cmd = null;
 
-    try {
-      cmd = cmdParser.parse(cmdOptions, cmdLineArgs);
-    } catch (ParseException e) {
-      if (log != null) {
-        // Log is initialized
-        // MapTool.showWarning() can be invoked here.  It will log the stacktrace,
-        // so there's no need for us to do it.
-        MapTool.showWarning("Error parsing the command line", e);
+    ArrayList<String> correctCmdLineArgs = new ArrayList<>(Arrays.asList(cmdLineArgs));
+    while (cmd == null) {
+      try {
+        cmd =
+            cmdParser.parse(
+                cmdOptions, correctCmdLineArgs.toArray(new String[correctCmdLineArgs.size()]));
+      } catch (UnrecognizedOptionException e) {
+        if (log != null) MapTool.showWarning("Error parsing the command line", e);
+        correctCmdLineArgs.remove(e.getOption());
+      } catch (ParseException e) {
+        if (log != null) MapTool.showWarning("Error parsing the command line", e);
+        correctCmdLineArgs.clear(); // Unknown parse exception so clean the list to initialize cmd
       }
     }
 
     if (log != null) {
-      // List out passed in arguments
-      for (String arg : cmdLineArgs) {
-        log.info("argument passed via command line: " + arg);
-  }}}
+      if (correctCmdLineArgs.isEmpty()) log.info("no argument passed via command line");
+      else
+        for (String arg : correctCmdLineArgs) log.info("argument passed via command line: " + arg);
+    }
+  }
 
-  public static void initializeLogger(){
+  public static void initializeLogger() {
     if (log != null) return; // Initialize only once!
 
     log = LogManager.getLogger(AppCmdLineProperties.class);
-    parse(); // parse can be done twice, same result, almost no time consumed and now we can write the log.
+    parse(); // parse can be done twice, same result, almost no time consumed and now we can show
+    // warn & write log
     if (cmd.hasOption(AppProperties.PROPS.CMD_OPTIONS_HELP.getCmdLongOpt())) helpInfo();
   }
 
@@ -131,10 +199,8 @@ public class AppCmdLineProperties {
     return StringUtil.parseInteger(cmd.getOptionValue(searchValue), defaultValue);
   }
 
-  /**
-   * A typical help information for the supported command line options.
-   */
-  public static void helpInfo(){
+  /** A typical help information for the supported command line options. */
+  public static void helpInfo() {
     String longOption;
     String longOptionTitle = "Long Option";
     String startInfoLine = "List of available command line options:";
@@ -142,20 +208,26 @@ public class AppCmdLineProperties {
 
     int maxLongOptionLength = longOptionTitle.length();
     int longOptionLength = 0;
-    for (Option option : cmdOptions.getOptions()){
-        longOptionLength = option.getLongOpt().length();
-        if (longOptionLength > maxLongOptionLength) maxLongOptionLength = longOptionLength;
+    for (Option option : cmdOptions.getOptions()) {
+      longOptionLength = option.getLongOpt().length();
+      if (longOptionLength > maxLongOptionLength) maxLongOptionLength = longOptionLength;
     }
 
     StringBuilder messageBuilder = new StringBuilder();
     String message;
     messageBuilder.append(startInfoLine).append(System.lineSeparator());
-    message = String.format("X | %s | Description", new StringBuilder(longOptionTitle).append(" ".repeat(maxLongOptionLength - longOptionTitle.length())).toString());
+    message =
+        String.format(
+            "X | %s | Description",
+            new StringBuilder(longOptionTitle)
+                .append(" ".repeat(maxLongOptionLength - longOptionTitle.length())));
     messageBuilder.append(message).append(System.lineSeparator());
     for (Option option : cmdOptions.getOptions()) {
       longOptionLength = option.getLongOpt().length();
-      longOption = new StringBuilder(option.getLongOpt()).append(" ".repeat(maxLongOptionLength - longOptionLength)).toString();
-      message = String.format("%s | %s | %s",option.getOpt(), longOption, option.getDescription());
+      longOption =
+          new StringBuilder(option.getLongOpt())
+              .append(" ".repeat(maxLongOptionLength - longOptionLength)).toString();
+      message = String.format("%s | %s | %s", option.getOpt(), longOption, option.getDescription());
       messageBuilder.append(message).append(System.lineSeparator());
     }
     messageBuilder.append(endInfoLine);

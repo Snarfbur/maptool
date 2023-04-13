@@ -36,7 +36,10 @@ import net.rptools.maptool.model.player.Player;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;import org.apache.logging.log4j.core.Appender;import org.apache.logging.log4j.core.appender.FileAppender;import org.apache.logging.log4j.core.appender.RollingFileAppender;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.appender.FileAppender;
+import org.apache.logging.log4j.core.appender.RollingFileAppender;
 
 /** This class provides utility functions for maptool client. */
 public class AppUtil {
@@ -49,27 +52,28 @@ public class AppUtil {
 
   private static Logger log;
 
-  /** Returns true if currently running on a Windows based operating system.
+  /**
+   * Returns true if currently running on a Windows based operating system.
+   *
    * @deprecated Its a property for the app, so please use AppProperties.isWindowsOs() direct.
    */
-  @Deprecated
-  public static boolean WINDOWS = AppProperties.isWindowsOs();
-
-  /** Returns true if currently running on a Mac OS X based operating system.
-   * @deprecated Its a property for the app, so please use AppProperties.isMacOs() direct.
-   */
-  @Deprecated
-  public static boolean MAC_OS_X = AppProperties.isMacOs();
-
-  /** Returns true if currently running on Linux or other Unix/Unix like system.
-   * @deprecated Its a property for the app, so please use AppProperties.isUnixOs() direct.
-   */
-  @Deprecated
-  public static boolean LINUX_OR_UNIX = AppProperties.isUnixOs();
+  @Deprecated public static boolean WINDOWS = AppProperties.isWindowsOs();
 
   /**
-   * @deprecated Not used anywhere? If usefull later, please set comment, otherwise remove it
+   * Returns true if currently running on a Mac OS X based operating system.
+   *
+   * @deprecated Its a property for the app, so please use AppProperties.isMacOs() direct.
    */
+  @Deprecated public static boolean MAC_OS_X = AppProperties.isMacOs();
+
+  /**
+   * Returns true if currently running on Linux or other Unix/Unix like system.
+   *
+   * @deprecated Its a property for the app, so please use AppProperties.isUnixOs() direct.
+   */
+  @Deprecated public static boolean LINUX_OR_UNIX = AppProperties.isUnixOs();
+
+  /** @deprecated Not used anywhere? If usefull later, please set comment, otherwise remove it */
   @Deprecated
   public static final String LOOK_AND_FEEL_NAME =
       MAC_OS_X
@@ -84,24 +88,23 @@ public class AppUtil {
           : null;
 
   /**
-   * Initialize the main directories DataDir & LogDir
-   * This is be done only once!
+   * Initialize the main directories DataDir & LogDir This is be done only once!
    *
-   *  <p>As a side-effect the function creates the directories if not exits.
+   * <p>As a side-effect the function creates the directories if not exits.
    */
   public static void initializeMainDirs() {
     if (appHome != null) return; // Initialize only once!
     appHome = new File(AppProperties.getDataDirName());
     if (!appHome.exists()) createDir(appHome);
-    File logsHome = new File (AppProperties.getLogDirName());
+    File logsHome = new File(AppProperties.getLogDirName());
     if (!logsHome.exists()) createDir(logsHome);
   }
 
-  /** Initializes the first loggers.
-   * This is be done only once!
+  /**
+   * Initializes the first loggers. This is be done only once!
    *
-   * During startup some classes have to be initialized before logging is possible.
-   * This can now establish a logger and maybe log some saved information over the starting phase.
+   * <p>During startup some classes have to be initialized before logging is possible. This can now
+   * establish a logger and maybe log some saved information over the starting phase.
    */
   public static void initializeFirstLoggers() {
     if (log != null) return; // Initialize only once
@@ -115,7 +118,9 @@ public class AppUtil {
     log.info("********************************************************************************");
     log.info("Logging to: " + getLoggerFileName());
 
-    AppProperties.initializeLoggers();
+    AppProperties.initializeLogger();
+    AppStartupProperties.initializeLogger();
+    AppCmdLineProperties.initializeLogger();
   }
 
   public static String getLoggerFileName() {
@@ -132,24 +137,15 @@ public class AppUtil {
 
     return "NOT_CONFIGURED";
   }
-
-  /**
-   * Returns a File object for USER_HOME if USER_HOME is non-null, otherwise null.
-   *
-   * @return the users home directory as a File object
-   */
-  private static File getUserHome() {
-    return new File(AppProperties.getUserHomeName());
-  }
-
+  
   private static void createDir(File path) {
     if (!path.exists()) {
       path.mkdirs();
       // Now check our work
       if (!path.exists()) {
         RuntimeException re =
-                new RuntimeException(
-                        I18N.getText("msg.error.unableToCreateDataDir", path.getAbsolutePath()));
+            new RuntimeException(
+                I18N.getText("msg.error.unableToCreateDataDir", path.getAbsolutePath()));
         if (log != null && log.isInfoEnabled()) {
           log.info("msg.error.unableToCreateDataDir", re);
         }
@@ -169,7 +165,9 @@ public class AppUtil {
    *
    * @return the maptool data directory
    */
-  public static File getAppHome() { return appHome; }
+  public static File getAppHome() {
+    return appHome;
+  }
 
   /**
    * Returns a {@link File} path that points to the AppHome base directory along with the subpath
@@ -191,7 +189,9 @@ public class AppUtil {
     return path;
   }
 
-  /** Set the state back to uninitialized
+  /**
+   * Set the state back to uninitialized
+   *
    * @deprecated Not in use ?
    */
   // Package protected for testing
@@ -256,7 +256,10 @@ public class AppUtil {
    */
   public static File getDataDirAppCfgFile() {
     // Temp old code:
-    return getAppHome(AppProperties.getConfigSubDirName()).toPath().resolve(APP_HOME_CONFIG_FILENAME).toFile();
+    return getAppHome(AppProperties.getConfigSubDirName())
+        .toPath()
+        .resolve(APP_HOME_CONFIG_FILENAME)
+        .toFile();
   }
 
   /**
@@ -290,9 +293,9 @@ public class AppUtil {
     return getAppHome(AppProperties.getTmpSubDirName());
   }
 
-
   //
-  // ToDo: Refactor into 2 classes: The methods above and below this line do not have a common theme, but each of them represents a subject area.
+  // ToDo: Refactor into 2 classes: The methods above and below this line do not have a common
+  // theme, but each of them represents a subject area.
   //
 
   /**

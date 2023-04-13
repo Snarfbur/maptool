@@ -43,12 +43,17 @@ public class LaunchInstructions {
         JOptionPane.showMessageDialog(new JFrame(), msg, "Usage", JOptionPane.INFORMATION_MESSAGE);
       }
 
-      // The definition of DataDir & LogDir can be overwritten in the app properties
-      AppProperties.initialize(args);
-      // Getting sure, that DataDir & LogDir exists
+      // The definition of the start up property file, DataDir & LogDir need initialisation of the
+      // properties
+      AppCmdLineProperties.initialize(args);
+      AppProperties.initialize();
+      AppStartupProperties.initialize();
+      // Getting sure, that DataDir & LogDir exists. Depends on app & cmdLine Properties
       AppUtil.initializeMainDirs();
       // Initialize the first loggers after log path exists
       AppUtil.initializeFirstLoggers();
+      // Logs & Exceptions will be in english, but the rest will be translated
+      AppProperties.initializeDefaultLocale();
 
       MapTool.main(args);
 
