@@ -220,7 +220,8 @@ public class AppCmdLineProperties {
         String.format(
             "X | %s | Description",
             new StringBuilder(longOptionTitle)
-                .append(" ".repeat(maxLongOptionLength - longOptionTitle.length())));
+                .append(" ".repeat(maxLongOptionLength - longOptionTitle.length()))
+                .toString());
     messageBuilder.append(message).append(System.lineSeparator());
     for (Option option : cmdOptions.getOptions()) {
       longOptionLength = option.getLongOpt().length();

@@ -294,7 +294,7 @@ public class AppUtil {
   }
 
   //
-  // ToDo: Refactor into 2 classes: The methods above and below this line do not have a common
+  // To Do: Refactor into 2 classes: The methods above and below this line do not have a common
   // theme, but each of them represents a subject area.
   //
 
