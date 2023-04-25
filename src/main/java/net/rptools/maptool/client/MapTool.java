@@ -41,11 +41,15 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URL;
+import java.net.UnknownHostException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import javax.crypto.NoSuchPaddingException;
 import javax.imageio.ImageIO;
 import javax.imageio.spi.IIORegistry;
 import javax.swing.*;
@@ -57,10 +61,7 @@ import net.rptools.lib.TaskBarFlasher;
 import net.rptools.lib.image.ThumbnailManager;
 import net.rptools.lib.net.RPTURLStreamHandlerFactory;
 import net.rptools.lib.sound.SoundManager;
-import net.rptools.maptool.client.events.ChatMessageAdded;
-import net.rptools.maptool.client.events.PlayerConnected;
-import net.rptools.maptool.client.events.PlayerDisconnected;
-import net.rptools.maptool.client.events.ServerStopped;
+import net.rptools.maptool.client.events.*;
 import net.rptools.maptool.client.functions.UserDefinedMacroFunctions;
 import net.rptools.maptool.client.swing.MapToolEventQueue;
 import net.rptools.maptool.client.swing.NoteFrame;
@@ -88,11 +89,7 @@ import net.rptools.maptool.model.TextMessage;
 import net.rptools.maptool.model.Zone;
 import net.rptools.maptool.model.ZoneFactory;
 import net.rptools.maptool.model.library.url.LibraryURLStreamHandler;
-import net.rptools.maptool.model.player.LocalPlayer;
-import net.rptools.maptool.model.player.Player;
-import net.rptools.maptool.model.player.PlayerDatabase;
-import net.rptools.maptool.model.player.PlayerDatabaseFactory;
-import net.rptools.maptool.model.player.Players;
+import net.rptools.maptool.model.player.*;
 import net.rptools.maptool.model.zones.TokensAdded;
 import net.rptools.maptool.model.zones.TokensRemoved;
 import net.rptools.maptool.model.zones.ZoneAdded;
@@ -104,6 +101,7 @@ import net.rptools.maptool.server.ServerConfig;
 import net.rptools.maptool.server.ServerPolicy;
 import net.rptools.maptool.transfer.AssetTransferManager;
 import net.rptools.maptool.util.MessageUtil;
+import net.rptools.maptool.util.PasswordGenerator;
 import net.rptools.maptool.util.UPnPUtil;
 import net.rptools.maptool.util.UserJvmOptions;
 import net.rptools.maptool.webapi.MTWebAppServer;
@@ -168,8 +166,6 @@ public class MapTool {
   private static String lastWhisperer;
 
   private static final MTWebAppServer webAppServer = new MTWebAppServer();
-
-  private static String loadCampaignOnStartPath = "";
 
   public static Dimension getThumbnailSize() {
     return THUMBNAIL_SIZE;
@@ -1000,6 +996,8 @@ public class MapTool {
     MapTool.getFrame().getCampaignPanel().reset();
     MapTool.getFrame().getGmPanel().reset();
     UserDefinedMacroFunctions.getInstance().handleCampaignLoadMacroEvent();
+
+    new MapToolEventBus().getMainEventBus().post(new CampaignActivated(campaign));
   }
 
   public static void setServerPolicy(ServerPolicy policy) {
@@ -1077,6 +1075,173 @@ public class MapTool {
       getFrame().getConnectionPanel().startHosting();
     }
     server.start();
+  }
+
+  /**
+   * Start the server and connect the client using the user preferences from the start server dialog
+   *
+   * @see StartServerDialogPreferences
+   */
+  public static void startServerAndConnectFromPreferences() {
+    if (!MapTool.isPersonalServer()) {
+      MapTool.showError("msg.error.alreadyRunningServer");
+      return;
+    }
+
+    StartServerDialogPreferences serverProps =
+        new StartServerDialogPreferences(); // data retrieved from Preferences.userRoot()
+    if (serverProps.getPort() == 0 || serverProps.getPort() > 65535) {
+      MapTool.showError("ServerDialog.error.port.outOfRange");
+      return;
+    }
+
+    ServerPolicy policy = new ServerPolicy();
+    policy.setAutoRevealOnMovement(serverProps.isAutoRevealOnMovement());
+    policy.setUseStrictTokenManagement(serverProps.getUseStrictTokenOwnership());
+    policy.setGmRevealsVisionForUnownedTokens(serverProps.getGmRevealsVisionForUnownedTokens());
+    policy.setPlayersCanRevealVision(serverProps.getPlayersCanRevealVision());
+    policy.setUseIndividualViews(serverProps.getUseIndividualViews());
+    policy.setPlayersReceiveCampaignMacros(serverProps.getPlayersReceiveCampaignMacros());
+    policy.setHiddenMapSelectUI(serverProps.getMapSelectUIHidden());
+    policy.setIsTokenEditorLocked(serverProps.getLockTokenEditOnStart());
+    policy.setIsMovementLocked(serverProps.getLockPlayerMovementOnStart());
+    policy.setDisablePlayerAssetPanel(serverProps.getPlayerLibraryLock());
+    // Tool Tips for unformatted inline rolls.
+    policy.setUseToolTipsForDefaultRollFormat(serverProps.getUseToolTipsForUnformattedRolls());
+    // Note: Restricted impersonation setting is the opposite of its label
+    // (Unrestricted when checked and restricted when unchecked)
+    policy.setRestrictedImpersonation(!serverProps.getRestrictedImpersonation());
+    policy.setMovementMetric(serverProps.getMovementMetric());
+    boolean useIF = serverProps.getUseIndividualViews() && serverProps.getUseIndividualFOW();
+    policy.setUseIndividualFOW(
+        serverProps.getUseIndividualViews() && serverProps.getUseIndividualFOW());
+
+    String gmPassword;
+    String playerPassword;
+
+    if (!serverProps.getUsePasswordFile()) {
+      gmPassword = serverProps.getGMPassword();
+      playerPassword = serverProps.getPlayerPassword();
+    } else {
+      gmPassword = new PasswordGenerator().getPassword();
+      playerPassword = new PasswordGenerator().getPassword();
+    }
+
+    ServerConfig config =
+        new ServerConfig(
+            serverProps.getUsername(),
+            gmPassword,
+            playerPassword,
+            serverProps.getPort(),
+            serverProps.getRPToolsName(),
+            "localhost",
+            serverProps.getUseEasyConnect(),
+            serverProps.getUseWebRtc());
+
+    // Use the existing campaign
+    Campaign campaign = MapTool.getCampaign();
+
+    boolean ok = true;
+    try {
+      ServerDisconnectHandler.disconnectExpected = true;
+      MapTool.stopServer();
+
+      // Use UPnP to open port in router
+      if (serverProps.getUseUPnP()) {
+        UPnPUtil.openPort(serverProps.getPort());
+      }
+      // Right now set this is set to whatever the last server settings were. If we
+      // wanted to turn it on and
+      // leave it turned on, the line would change to:
+      // campaign.setHasUsedFogToolbar((serverProps.getUseIndividualViews() &&
+      // serverProps.getUseIndividualFOW()) || campaign.hasUsedFogToolbar());
+      campaign.setHasUsedFogToolbar(
+          serverProps.getUseIndividualViews() && serverProps.getUseIndividualFOW());
+
+      PlayerDatabaseFactory.setServerConfig(config);
+      if (serverProps.getUsePasswordFile()) {
+        PlayerDatabaseFactory.setCurrentPlayerDatabase(
+            PlayerDatabaseFactory.PlayerDatabaseType.PASSWORD_FILE);
+        PasswordFilePlayerDatabase db =
+            (PasswordFilePlayerDatabase) PlayerDatabaseFactory.getCurrentPlayerDatabase();
+        db.initialize();
+        if (serverProps.getRole() == Player.Role.GM) {
+          db.addTemporaryPlayer(serverProps.getUsername(), Player.Role.GM, gmPassword);
+        } else {
+          db.addTemporaryPlayer(serverProps.getUsername(), Player.Role.PLAYER, playerPassword);
+        }
+      } else {
+        PlayerDatabaseFactory.setCurrentPlayerDatabase(
+            PlayerDatabaseFactory.PlayerDatabaseType.DEFAULT);
+      }
+      PlayerDatabase playerDatabase = PlayerDatabaseFactory.getCurrentPlayerDatabase();
+      // Make a copy of the campaign since we don't coordinate local changes well ...
+      // yet
+
+      /*
+       * JFJ 2010-10-27 The below creates a NEW campaign with a copy of the existing campaign. However, this is NOT a full copy. In the constructor called below, each zone from the
+       * previous campaign(ie, the one passed in) is recreated. This means that only some items for that campaign, zone(s), and token's are copied over when you start a new server
+       * instance.
+       *
+       * You need to modify either Campaign(Campaign) or Zone(Zone) to get any data you need to persist from the pre-server campaign to the post server start up campaign.
+       */
+      MapTool.startServer(
+          serverProps.getUsername(), config, policy, campaign, playerDatabase, true);
+
+      // Connect to server
+      Player.Role playerType = serverProps.getRole();
+      Runnable onConnected =
+          () -> {
+            // connecting
+            MapTool.getFrame()
+                .getConnectionStatusPanel()
+                .setStatus(ConnectionStatusPanel.Status.server);
+            MapTool.addLocalMessage(
+                MessageUtil.getFormattedSystemMsg(I18N.getText("msg.info.startServer")));
+          };
+
+      if (playerType == Player.Role.GM) {
+        MapTool.createConnection(
+            config,
+            new LocalPlayer(serverProps.getUsername(), playerType, gmPassword),
+            onConnected);
+      } else {
+        MapTool.createConnection(
+            config,
+            new LocalPlayer(serverProps.getUsername(), playerType, playerPassword),
+            onConnected);
+      }
+    } catch (UnknownHostException uh) {
+      MapTool.showError("msg.error.invalidLocalhost", uh);
+      ok = false;
+    } catch (IOException ioe) {
+      MapTool.showError("msg.error.failedConnect", ioe);
+      ok = false;
+    } catch (NoSuchAlgorithmException
+        | InvalidAlgorithmParameterException
+        | InvalidKeySpecException
+        | NoSuchPaddingException
+        | InvalidKeyException
+        | ExecutionException
+        | InterruptedException e) {
+      MapTool.showError("msg.error.initializeCrypto", e);
+      ok = false;
+    } catch (PasswordDatabaseException pwde) {
+      MapTool.showError(pwde.getMessage());
+      ok = false;
+    }
+
+    if (!ok) {
+      try {
+        MapTool.startPersonalServer(campaign);
+      } catch (IOException
+          | NoSuchAlgorithmException
+          | InvalidKeySpecException
+          | ExecutionException
+          | InterruptedException e) {
+        MapTool.showError("msg.error.failedStartPersonalServer", e);
+      }
+    }
   }
 
   public static ThumbnailManager getThumbnailManager() {
@@ -1372,14 +1537,20 @@ public class MapTool {
   }
 
   private static void postInitialize() {
+    if (AppProperties.getLoadServerFlag())
+      LoadServerOnStartup.INSTANCE.delayLoadServerUntilCampaignActivated();
+
     // Check to see if there is an autosave file from MT crashing
     getAutoSaveManager().check();
 
-    if (!loadCampaignOnStartPath.isEmpty()) {
-      File campaignFile = new File(loadCampaignOnStartPath);
-      if (campaignFile.exists()) {
-        AppActions.loadCampaign(campaignFile);
-      }
+    if (AppProperties.getLoadCampaignName() != null) {
+      log.info("Loading initial campaign: " + AppProperties.getLoadCampaignName());
+      File campaignFile = new File(AppProperties.getLoadCampaignName());
+      if (campaignFile.exists()) AppActions.loadCampaign(campaignFile);
+    } else if (AppProperties.getLoadServerFlag()) {
+      // Default campaign is not loaded and must handle different
+      log.info("Load server for default campaign.");
+      startServerAndConnectFromPreferences();
     }
 
     // fire up autosaves
@@ -1559,13 +1730,13 @@ public class MapTool {
     if (AppProperties.getListMacrosFlag()) listMacros();
 
     // Log, if a specific campaign should be loaded at startup
-    if (AppProperties.getLoadCompaignName() != null)
-      log.info("Loading initial campaign: " + AppProperties.getLoadCompaignName());
+    if (AppProperties.getLoadCampaignName() != null)
+      log.info("Loading initial campaign: " + AppProperties.getLoadCampaignName());
 
     // System properties
     System.setProperty("swing.aatext", "true");
 
-    final SplashScreen splash = new SplashScreen((isDevelopment()) ? getVersion() : getVersion());
+    final SplashScreen splash = new SplashScreen(getVersion());
 
     try {
       ThemeSupport.loadTheme();

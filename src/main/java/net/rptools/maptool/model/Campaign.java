@@ -54,6 +54,8 @@ public class Campaign {
   /** The only built-in property type is "Basic". Any others are user-defined. */
   public static final String DEFAULT_TOKEN_PROPERTY_TYPE = "Basic";
 
+  public static final String DEFAULT_CAMPAIGN_NAME = "Default";
+
   private GUID id = new GUID();
 
   /** The {@link Zone}s that make up this {@code Campaign}. */
@@ -119,11 +121,16 @@ public class Campaign {
   private Boolean hasUsedFogToolbar = null;
 
   public Campaign() {
-    name = "Default";
+    name = DEFAULT_CAMPAIGN_NAME;
     macroButtonLastIndex = 0;
     gmMacroButtonLastIndex = 0;
     macroButtonProperties = new ArrayList<MacroButtonProperties>();
     gmMacroButtonProperties = new ArrayList<MacroButtonProperties>();
+  }
+
+  public boolean isDefaultCampaign() {
+    // Quick & Dirty - a flag would be better, but much more complicated
+    return DEFAULT_CAMPAIGN_NAME.equals(name);
   }
 
   private Object readResolve() {

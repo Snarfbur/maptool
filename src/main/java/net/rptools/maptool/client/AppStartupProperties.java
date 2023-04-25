@@ -34,7 +34,7 @@ public class AppStartupProperties {
       EnumSet.of(
           AppProperties.PROPS.DATA_DIR_NAME,
           AppProperties.PROPS.LOG_DIR_NAME,
-          // AppProperties.PROPS.LOAD_SERVER_FLAG,
+          AppProperties.PROPS.LOAD_SERVER_FLAG,
           AppProperties.PROPS.LOAD_CAMPAIGN_NAME,
           AppProperties.PROPS.LOCALE_LANGUAGE,
           AppProperties.PROPS.LOCALE_REGION,

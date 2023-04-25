@@ -24,7 +24,7 @@ import org.apache.logging.log4j.Logger;
 public class AppCmdLineProperties {
 
   private static Logger log;
- 
+
   private static Options cmdOptions;
   private static CommandLine cmd;
   private static String[] cmdLineArgs;
@@ -94,11 +94,11 @@ public class AppCmdLineProperties {
         AppProperties.PROPS.LOAD_CAMPAIGN_NAME.getCmdLongOpt(),
         true,
         "load campaign on startup. Arg.: Full file path and name of the campaign");
-    // cmdOptions.addOption(
-    //      "S",
-    //      AppProperties.PROPS.LOAD_SERVER_FLAG.getCmdLongOpt(),
-    //      false,
-    //      "start server on startup. Using server parameters from ???");
+    cmdOptions.addOption(
+        "S",
+        AppProperties.PROPS.LOAD_SERVER_FLAG.getCmdLongOpt(),
+        false,
+        "start server on startup. Using server parameters from user preferences");
     cmdOptions.addOption(
         "D",
         AppProperties.PROPS.DATA_DIR_NAME.getCmdLongOpt(),
@@ -227,7 +227,8 @@ public class AppCmdLineProperties {
       longOptionLength = option.getLongOpt().length();
       longOption =
           new StringBuilder(option.getLongOpt())
-              .append(" ".repeat(maxLongOptionLength - longOptionLength)).toString();
+              .append(" ".repeat(maxLongOptionLength - longOptionLength))
+              .toString();
       message = String.format("%s | %s | %s", option.getOpt(), longOption, option.getDescription());
       messageBuilder.append(message).append(System.lineSeparator());
     }

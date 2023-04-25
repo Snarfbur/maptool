@@ -46,7 +46,7 @@ public class AppProperties {
     WINDOW_HEIGHT(null, "height", "-1"),
     WINDOW_XPOS(null, "xpos", "-1"),
     WINDOW_YPOS(null, "ypos", "-1"),
-    //    LOAD_SERVER_FLAG("", "server", "false"),
+    LOAD_SERVER_FLAG("", "server", "false"),
     LOAD_CAMPAIGN_NAME("", "campaign", null),
     @Deprecated
     DEPRECATED_LOAD_CAMPAIGN_NAME(null, "file", null),
@@ -358,7 +358,7 @@ public class AppProperties {
   }
 
   /** @return Name of the campaign, with should be load at startup, default null. */
-  public static String getLoadCompaignName() {
+  public static String getLoadCampaignName() {
     return AppCmdLineProperties.getCommandLineOption(
         PROPS.LOAD_CAMPAIGN_NAME.getCmdLongOpt(),
         AppCmdLineProperties.getCommandLineOption(
@@ -367,7 +367,12 @@ public class AppProperties {
                 PROPS.LOAD_CAMPAIGN_NAME.getKey(), PROPS.LOAD_CAMPAIGN_NAME.getDefaultValue())));
   }
 
-  public static boolean getSkipAutoUpdateFlags() {
+  public static boolean getLoadServerFlag() {
+    return AppStartupProperties.getStartupProperty(PROPS.LOAD_SERVER_FLAG.getKey())
+        || AppCmdLineProperties.getCommandLineOption(PROPS.LOAD_SERVER_FLAG.getCmdLongOpt());
+  }
+
+  public static boolean getSkipAutoUpdateFlag() {
     return AppStartupProperties.getStartupProperty(PROPS.SKIP_AUTO_UPDATE_FLAG.getKey());
   }
 }

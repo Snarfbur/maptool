@@ -23,8 +23,6 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.text.DateFormat;
@@ -36,7 +34,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-import javax.crypto.NoSuchPaddingException;
 import javax.swing.*;
 import javax.swing.text.BadLocationException;
 import net.rptools.lib.FileUtil;
@@ -63,7 +60,6 @@ import net.rptools.maptool.client.ui.mappropertiesdialog.MapPropertiesDialog;
 import net.rptools.maptool.client.ui.players.PlayerDatabaseDialog;
 import net.rptools.maptool.client.ui.preferencesdialog.PreferencesDialog;
 import net.rptools.maptool.client.ui.startserverdialog.StartServerDialog;
-import net.rptools.maptool.client.ui.startserverdialog.StartServerDialogPreferences;
 import net.rptools.maptool.client.ui.theme.Icons;
 import net.rptools.maptool.client.ui.theme.RessourceManager;
 import net.rptools.maptool.client.ui.transferprogressdialog.TransferProgressDialog;
@@ -77,8 +73,6 @@ import net.rptools.maptool.model.Zone.VisionType;
 import net.rptools.maptool.model.campaign.CampaignManager;
 import net.rptools.maptool.model.drawing.DrawableTexturePaint;
 import net.rptools.maptool.model.player.*;
-import net.rptools.maptool.model.player.Player.Role;
-import net.rptools.maptool.model.player.PlayerDatabaseFactory.PlayerDatabaseType;
 import net.rptools.maptool.server.ServerConfig;
 import net.rptools.maptool.server.ServerPolicy;
 import net.rptools.maptool.util.*;
@@ -2171,175 +2165,7 @@ public class AppActions {
                 if (!dialog.accepted()) // Results stored in Preferences.userRoot()
                 return;
 
-                StartServerDialogPreferences serverProps =
-                    new StartServerDialogPreferences(); // data retrieved from
-                // Preferences.userRoot()
-                if (serverProps.getPort() == 0 || serverProps.getPort() > 65535) {
-                  MapTool.showError("ServerDialog.error.port.outOfRange");
-                  return;
-                }
-
-                ServerPolicy policy = new ServerPolicy();
-                policy.setAutoRevealOnMovement(serverProps.isAutoRevealOnMovement());
-                policy.setUseStrictTokenManagement(serverProps.getUseStrictTokenOwnership());
-                policy.setGmRevealsVisionForUnownedTokens(
-                    serverProps.getGmRevealsVisionForUnownedTokens());
-                policy.setPlayersCanRevealVision(serverProps.getPlayersCanRevealVision());
-                policy.setUseIndividualViews(serverProps.getUseIndividualViews());
-                policy.setPlayersReceiveCampaignMacros(
-                    serverProps.getPlayersReceiveCampaignMacros());
-                policy.setHiddenMapSelectUI(serverProps.getMapSelectUIHidden());
-                policy.setIsTokenEditorLocked(serverProps.getLockTokenEditOnStart());
-                policy.setIsMovementLocked(serverProps.getLockPlayerMovementOnStart());
-                policy.setDisablePlayerAssetPanel(serverProps.getPlayerLibraryLock());
-
-                // Tool Tips for unformatted inline rolls.
-                policy.setUseToolTipsForDefaultRollFormat(
-                    serverProps.getUseToolTipsForUnformattedRolls());
-
-                // my addition
-                // Note: Restricted impersonation setting is the opposite of its label
-                // (Unrestricted when checked and restricted when unchecked)
-                policy.setRestrictedImpersonation(!serverProps.getRestrictedImpersonation());
-                policy.setMovementMetric(serverProps.getMovementMetric());
-                boolean useIF =
-                    serverProps.getUseIndividualViews() && serverProps.getUseIndividualFOW();
-                policy.setUseIndividualFOW(useIF);
-
-                String gmPassword;
-                String playerPassword;
-
-                if (!serverProps.getUsePasswordFile()) {
-                  gmPassword = serverProps.getGMPassword();
-                  playerPassword = serverProps.getPlayerPassword();
-                } else {
-                  gmPassword = new PasswordGenerator().getPassword();
-                  playerPassword = new PasswordGenerator().getPassword();
-                }
-
-                ServerConfig config =
-                    new ServerConfig(
-                        serverProps.getUsername(),
-                        gmPassword,
-                        playerPassword,
-                        serverProps.getPort(),
-                        serverProps.getRPToolsName(),
-                        "localhost",
-                        serverProps.getUseEasyConnect(),
-                        serverProps.getUseWebRtc());
-
-                // Use the existing campaign
-                Campaign campaign = MapTool.getCampaign();
-
-                boolean failed = false;
-                try {
-                  ServerDisconnectHandler.disconnectExpected = true;
-                  MapTool.stopServer();
-
-                  // Use UPnP to open port in router
-                  if (serverProps.getUseUPnP()) {
-                    UPnPUtil.openPort(serverProps.getPort());
-                  }
-                  // Right now set this is set to whatever the last server settings were. If we
-                  // wanted to turn it on and
-                  // leave it turned on, the line would change to:
-                  // campaign.setHasUsedFogToolbar(useIF || campaign.hasUsedFogToolbar());
-                  campaign.setHasUsedFogToolbar(useIF);
-
-                  PlayerDatabaseFactory.setServerConfig(config);
-                  if (serverProps.getUsePasswordFile()) {
-                    PlayerDatabaseFactory.setCurrentPlayerDatabase(
-                        PlayerDatabaseType.PASSWORD_FILE);
-                    PasswordFilePlayerDatabase db =
-                        (PasswordFilePlayerDatabase)
-                            PlayerDatabaseFactory.getCurrentPlayerDatabase();
-                    db.initialize();
-                    if (serverProps.getRole() == Role.GM) {
-                      db.addTemporaryPlayer(
-                          dialog.getUsernameTextField().getText(), Role.GM, gmPassword);
-                    } else {
-                      db.addTemporaryPlayer(
-                          dialog.getUsernameTextField().getText(), Role.PLAYER, playerPassword);
-                    }
-                  } else {
-                    PlayerDatabaseFactory.setCurrentPlayerDatabase(PlayerDatabaseType.DEFAULT);
-                  }
-                  PlayerDatabase playerDatabase = PlayerDatabaseFactory.getCurrentPlayerDatabase();
-                  // Make a copy of the campaign since we don't coordinate local changes well ...
-                  // yet
-
-                  /*
-                   * JFJ 2010-10-27 The below creates a NEW campaign with a copy of the existing campaign. However, this is NOT a full copy. In the constructor called below, each zone from the
-                   * previous campaign(ie, the one passed in) is recreated. This means that only some items for that campaign, zone(s), and token's are copied over when you start a new server
-                   * instance.
-                   *
-                   * You need to modify either Campaign(Campaign) or Zone(Zone) to get any data you need to persist from the pre-server campaign to the post server start up campaign.
-                   */
-                  MapTool.startServer(
-                      dialog.getUsernameTextField().getText(),
-                      config,
-                      policy,
-                      campaign,
-                      playerDatabase,
-                      true);
-
-                  // Connect to server
-                  Player.Role playerType = (Player.Role) dialog.getRoleCombo().getSelectedItem();
-                  Runnable onConnected =
-                      () -> {
-                        // connecting
-                        MapTool.getFrame()
-                            .getConnectionStatusPanel()
-                            .setStatus(ConnectionStatusPanel.Status.server);
-                        MapTool.addLocalMessage(
-                            MessageUtil.getFormattedSystemMsg(
-                                I18N.getText("msg.info.startServer")));
-                      };
-
-                  if (playerType == Player.Role.GM) {
-                    MapTool.createConnection(
-                        config,
-                        new LocalPlayer(
-                            dialog.getUsernameTextField().getText(), playerType, gmPassword),
-                        onConnected);
-                  } else {
-                    MapTool.createConnection(
-                        config,
-                        new LocalPlayer(
-                            dialog.getUsernameTextField().getText(), playerType, playerPassword),
-                        onConnected);
-                  }
-                } catch (UnknownHostException uh) {
-                  MapTool.showError("msg.error.invalidLocalhost", uh);
-                  failed = true;
-                } catch (IOException ioe) {
-                  MapTool.showError("msg.error.failedConnect", ioe);
-                  failed = true;
-                } catch (NoSuchAlgorithmException
-                    | InvalidAlgorithmParameterException
-                    | InvalidKeySpecException
-                    | NoSuchPaddingException
-                    | InvalidKeyException
-                    | ExecutionException
-                    | InterruptedException e) {
-                  MapTool.showError("msg.error.initializeCrypto", e);
-                  failed = true;
-                } catch (PasswordDatabaseException pwde) {
-                  MapTool.showError(pwde.getMessage());
-                  failed = true;
-                }
-
-                if (failed) {
-                  try {
-                    MapTool.startPersonalServer(campaign);
-                  } catch (IOException
-                      | NoSuchAlgorithmException
-                      | InvalidKeySpecException
-                      | ExecutionException
-                      | InterruptedException e) {
-                    MapTool.showError("msg.error.failedStartPersonalServer", e);
-                  }
-                }
+                MapTool.startServerAndConnectFromPreferences();
               });
         }
       };

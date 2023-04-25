@@ -137,7 +137,7 @@ public class AppUtil {
 
     return "NOT_CONFIGURED";
   }
-  
+
   private static void createDir(File path) {
     if (!path.exists()) {
       path.mkdirs();

@@ -47,7 +47,7 @@ public class AppUpdate {
    */
   public static boolean gitHubReleases() {
     // AppPreferences.setSkipAutoUpdate(false); // For testing only
-    if (AppPreferences.getSkipAutoUpdate() || AppProperties.getSkipAutoUpdateFlags()) return false;
+    if (AppPreferences.getSkipAutoUpdate() || AppProperties.getSkipAutoUpdateFlag()) return false;
 
     // Default for Linux?
     String DOWNLOAD_EXTENSION = ".deb";
