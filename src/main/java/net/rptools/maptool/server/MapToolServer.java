@@ -31,6 +31,7 @@ import net.rptools.maptool.client.ui.connectioninfodialog.ConnectionInfoDialog;
 import net.rptools.maptool.common.MapToolConstants;
 import net.rptools.maptool.language.I18N;
 import net.rptools.maptool.model.Campaign;
+import net.rptools.maptool.model.GUID;
 import net.rptools.maptool.model.TextMessage;
 import net.rptools.maptool.model.player.PlayerDatabase;
 import net.rptools.maptool.model.player.PlayerDatabaseFactory;
@@ -41,7 +42,9 @@ import net.rptools.maptool.transfer.AssetTransferManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-/** @author drice */
+/**
+ * @author drice
+ */
 public class MapToolServer {
   private static final Logger log = LogManager.getLogger(MapToolServer.class);
   private static final int ASSET_CHUNK_SIZE = 5 * 1024;
@@ -135,6 +138,12 @@ public class MapToolServer {
 
   public boolean isPlayerConnected(String id) {
     return conn.getPlayer(id) != null;
+  }
+
+  public void updatePlayerStatus(String playerName, GUID zoneId, boolean loaded) {
+    var player = conn.getPlayer(playerName);
+    player.setLoaded(loaded);
+    player.setZoneId(zoneId);
   }
 
   public void setCampaign(Campaign campaign) {
