@@ -92,6 +92,7 @@ import net.rptools.maptool.model.player.LocalPlayer;
 import net.rptools.maptool.model.player.Player;
 import net.rptools.maptool.model.player.PlayerDatabase;
 import net.rptools.maptool.model.player.PlayerDatabaseFactory;
+import net.rptools.maptool.model.player.PlayerZoneListener;
 import net.rptools.maptool.model.player.Players;
 import net.rptools.maptool.model.zones.TokensAdded;
 import net.rptools.maptool.model.zones.TokensRemoved;
@@ -148,6 +149,7 @@ public class MapTool {
 
   private static List<Player> playerList;
   private static LocalPlayer player;
+  private static PlayerZoneListener playerZoneListener;
 
   private static MapToolConnection conn;
   private static ClientMessageHandler handler;
@@ -652,6 +654,7 @@ public class MapTool {
 
     try {
       player = new LocalPlayer("", Player.Role.GM, ServerConfig.getPersonalServerGMPassword());
+      playerZoneListener = new PlayerZoneListener();
       Campaign cmpgn = CampaignFactory.createBasicCampaign();
       // This was previously being done in the server thread and didn't always get done
       // before the campaign was accessed by the postInitialize() method below.
@@ -769,7 +772,9 @@ public class MapTool {
     return serverCommand;
   }
 
-  /** @return the server, or null if player is a client. */
+  /**
+   * @return the server, or null if player is a client.
+   */
   public static MapToolServer getServer() {
     return server;
   }
@@ -1183,7 +1188,10 @@ public class MapTool {
   }
 
   public static void startPersonalServer(Campaign campaign)
-      throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, ExecutionException,
+      throws IOException,
+          NoSuchAlgorithmException,
+          InvalidKeySpecException,
+          ExecutionException,
           InterruptedException {
     ServerConfig config = ServerConfig.createPersonalServerConfig();
 

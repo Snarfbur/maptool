@@ -38,6 +38,7 @@ import java.io.StringReader;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
@@ -291,7 +292,7 @@ public class Token implements Cloneable {
   private transient Color visionOverlayColor;
 
   // Jamz: allow token alpha channel modification
-  private float tokenOpacity = 1.0f;
+  private @Nonnull Float tokenOpacity = 1.0f;
 
   private String speechName = "";
 
@@ -673,41 +674,27 @@ public class Token implements Cloneable {
     return haloColor;
   }
 
+  /**
+   * @return The token opacity, in the range [0.0f, 1.0f].
+   */
   public float getTokenOpacity() {
-    if (tokenOpacity <= 0.0f) {
-      tokenOpacity = 1.0f;
-    }
-
     return tokenOpacity;
   }
 
   /**
-   * Set the token opacity from a string trimmed to [0.05f, 1.0f]
-   *
-   * @param alpha the String of the opacity value.
-   * @return the float of the opacity
-   */
-  public float setTokenOpacity(String alpha) {
-    return setTokenOpacity(Float.parseFloat(alpha));
-  }
-
-  /**
-   * Set the token opacity from a float trimmed to [0.05f, 1.0f]
+   * Set the token opacity from a float trimmed to [0.0f, 1.0f]
    *
    * @param alpha the float of the opacity.
-   * @return the float of the opacity trimmed.
    */
-  public float setTokenOpacity(float alpha) {
+  public void setTokenOpacity(float alpha) {
     if (alpha > 1.0f) {
       alpha = 1.0f;
     }
-    if (alpha <= 0.0f) {
-      alpha = 0.05f;
+    if (alpha < 0.0f) {
+      alpha = 0.0f;
     }
 
     tokenOpacity = alpha;
-
-    return tokenOpacity;
   }
 
   /**
@@ -1032,7 +1019,9 @@ public class Token implements Cloneable {
     return false;
   }
 
-  /** @return false if lightSourceList is null or empty, and true otherwise */
+  /**
+   * @return false if lightSourceList is null or empty, and true otherwise
+   */
   public boolean hasLightSources() {
     return !lightSourceList.isEmpty();
   }
@@ -1046,7 +1035,9 @@ public class Token implements Cloneable {
     ownerList.add(playerId);
   }
 
-  /** @return true if the token is owned by all or has explicit owners. */
+  /**
+   * @return true if the token is owned by all or has explicit owners.
+   */
   public synchronized boolean hasOwners() {
     return ownerType == OWNER_TYPE_ALL || !ownerList.isEmpty();
   }
@@ -1065,7 +1056,9 @@ public class Token implements Cloneable {
     }
   }
 
-  /** @return the set of owner names of the token. */
+  /**
+   * @return the set of owner names of the token.
+   */
   public Set<String> getOwners() {
     return Collections.unmodifiableSet(ownerList);
   }
@@ -1305,12 +1298,16 @@ public class Token implements Cloneable {
     this.scaleY = scaleY;
   }
 
-  /** @return Returns the snapScale. */
+  /**
+   * @return Returns the snapScale.
+   */
   public boolean isSnapToScale() {
     return snapToScale;
   }
 
-  /** @param snapScale The snapScale to set. */
+  /**
+   * @param snapScale The snapScale to set.
+   */
   public void setSnapToScale(boolean snapScale) {
     this.snapToScale = snapScale;
   }
@@ -1319,17 +1316,23 @@ public class Token implements Cloneable {
     this.isVisible = visible;
   }
 
-  /** @return isVisible */
+  /**
+   * @return isVisible
+   */
   public boolean isVisible() {
     return isVisible;
   }
 
-  /** @return the visibleOnlyToOwner */
+  /**
+   * @return the visibleOnlyToOwner
+   */
   public boolean isVisibleOnlyToOwner() {
     return visibleOnlyToOwner;
   }
 
-  /** @param visibleOnlyToOwner the visibleOnlyToOwner to set */
+  /**
+   * @param visibleOnlyToOwner the visibleOnlyToOwner to set
+   */
   public void setVisibleOnlyToOwner(boolean visibleOnlyToOwner) {
     this.visibleOnlyToOwner = visibleOnlyToOwner;
   }
@@ -1676,7 +1679,9 @@ public class Token implements Cloneable {
     return new Point2D.Double(offsetX, offsetY);
   }
 
-  /** @return the String of the sightType */
+  /**
+   * @return the String of the sightType
+   */
   public String getSightType() {
     return sightType;
   }
@@ -1870,12 +1875,16 @@ public class Token implements Cloneable {
     return val;
   }
 
-  /** @return all property names, all in lowercase. */
+  /**
+   * @return all property names, all in lowercase.
+   */
   public Set<String> getPropertyNames() {
     return getPropertyMap().keySet();
   }
 
-  /** @return all property names, preserving their case. */
+  /**
+   * @return all property names, preserving their case.
+   */
   public Set<String> getPropertyNamesRaw() {
     return getPropertyMap().keySetRaw();
   }
@@ -2060,12 +2069,16 @@ public class Token implements Cloneable {
     return matches.keySet();
   }
 
-  /** @return Getter for notes */
+  /**
+   * @return Getter for notes
+   */
   public String getNotes() {
     return notes;
   }
 
-  /** @param aNotes Setter for notes */
+  /**
+   * @param aNotes Setter for notes
+   */
   public void setNotes(String aNotes) {
     notes = aNotes;
   }
@@ -2143,7 +2156,9 @@ public class Token implements Cloneable {
     return anchorY;
   }
 
-  /** @return the scale of the token layout */
+  /**
+   * @return the scale of the token layout
+   */
   public double getSizeScale() {
     return sizeScale;
   }
@@ -2520,15 +2535,25 @@ public class Token implements Cloneable {
       gmNotesType = SyntaxConstants.SYNTAX_STYLE_NONE;
     }
 
+    // Pre 1.13
+    if (tokenOpacity == null) {
+      tokenOpacity = 1.f;
+    }
+    tokenOpacity = Math.max(0.f, Math.min(tokenOpacity, 1.f));
+
     return this;
   }
 
-  /** @param exposedAreaGUID the exposedAreaGUID to set */
+  /**
+   * @param exposedAreaGUID the exposedAreaGUID to set
+   */
   public void setExposedAreaGUID(GUID exposedAreaGUID) {
     this.exposedAreaGUID = exposedAreaGUID;
   }
 
-  /** @return the exposedAreaGUID */
+  /**
+   * @return the exposedAreaGUID
+   */
   public GUID getExposedAreaGUID() {
     return exposedAreaGUID;
   }
@@ -2547,7 +2572,9 @@ public class Token implements Cloneable {
     }
   }
 
-  /** @return is token an image/lib token */
+  /**
+   * @return is token an image/lib token
+   */
   public boolean isImgOrLib() {
     return (getName().toLowerCase().startsWith("image:")
         || getName().toLowerCase().startsWith("lib:"));
@@ -2720,7 +2747,7 @@ public class Token implements Cloneable {
         setIsAlwaysVisible(parameters.get(0).getBoolValue());
         break;
       case setTokenOpacity:
-        setTokenOpacity(parameters.get(0).getStringValue());
+        setTokenOpacity(Float.parseFloat(parameters.get(0).getStringValue()));
         break;
       case setTerrainModifier:
         setTerrainModifier(parameters.get(0).getDoubleValue());
