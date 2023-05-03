@@ -111,8 +111,8 @@ import org.apache.commons.lang.StringUtils;
  * SELECT=nnn sets the initial selection (default 0). Option: ORIENT=H causes the radio buttons to
  * be laid out on one line (default V). Option: VALUE=STRING causes the return value to be the
  * string of the selected item (default NUMBER). LABEL - A label. The "varname" is ignored and no
- * value is assigned to it. Option: TEXT=FALSE, ICON=TRUE, ICONSIZE=nnn, as in the LIST type. PROPS
- * - A sub-panel with multiple text boxes. "value" contains a StrProp of the form "key1=val1;
+ * value is assigned to it. Option: TEXT=FALSE, ICON=TRUE, ICONSIZE=nnn, as in the LIST type. PROP -
+ * A sub-panel with multiple text boxes. "value" contains a StrProp of the form "key1=val1;
  * key2=val2; ..." One text box is created for each key, populated with the matching value. Option:
  * SETVARS=SUFFIXED causes variable assignment to each key name, with appended "_" (default NONE).
  * Option: SETVARS=UNSUFFIXED causes variable assignment to each key name. TAB - A tabbed dialog tab
@@ -1419,7 +1419,7 @@ public class InputFunction extends AbstractFunction {
 // A sample for the TAB control
 /*
  *
- * [h: status = input( "tab0 | Abilities | Enter abilities here | TAB", "blah|Max value is 18|Note|LABEL ## abils|Str=8;Con=8;Dex=8;Int=8;Wis=8;Cha=8|Abilities|PROPS" , "txt0|text on tab 0|",
+ * [h: status = input( "tab0 | Abilities | Enter abilities here | TAB", "blah|Max value is 18|Note|LABEL ## abils|Str=8;Con=8;Dex=8;Int=8;Wis=8;Cha=8|Abilities|PROP" , "txt0|text on tab 0|",
  * "tab1 | Options | Various options | TAB |select=true", "txt|default text ## ck|1|Toggle me|CHECK ## list|a,b,This is a very long item,d|Pick one|LIST ## foo|foo" )] [h: abort(status)] tab0 is set
  * to [tab0] <br>tab1 is set to [tab1] <br> <br>list is set to [list] <br>get list from the tab1 variable: [getStrProp(tab1,"list","","##")]
  */
@@ -1428,7 +1428,7 @@ public class InputFunction extends AbstractFunction {
 /*
  * [h: props = "a=3;b=bob;c=cow;d=40;e=55;f=33;g=big time;h=hello;i=interesting;j=jack;k=kow;l=leap;m=moon;" ] [h: status = input( "tab0 | Settings | Settings tooltip | TAB", "foo|||CHECK ## bar|bar",
  * "tab1 | Options | Options tooltip | TAB | select=true", "num|a,b,c,d|Pick one|list ## zot|zot ## zam|zam", "tab2 | Options2 | Options2 tooltip | TAB | ", "p | " + props +
- * " | Sample props | PROPS ## p2 | " + props + " | More props | PROPS ## p3 | " + props + " | Even more props | PROPS ## p4 | " + props + " | Still more props | PROPS", "num2|a,b,c,d|Pick one|list ",
+ * " | Sample props | PROP ## p2 | " + props + " | More props | PROP ## p3 | " + props + " | Even more props | PROP ## p4 | " + props + " | Still more props | PROP", "num2|a,b,c,d|Pick one|list ",
  * "num3|after all it's only a listbox here now isn't it dear?,b,c,d|Pick one|list|span=true ## ee|ee ## ff|ff ## gg|gg ## hh|hh ## ii|ii ## jj|jj ## kk|kk" , "tab3 | Empty | nothin' | TAB" )] [h:
  * abort(status)] tab0 is [tab0]<br> foo is [foo]<br> tab1 is [tab1]<br> num is [num]<br> tab2 is [tab2]<br> tab3 is [tab3]<br>
  */
@@ -1437,7 +1437,7 @@ public class InputFunction extends AbstractFunction {
 /*
  *
  * Original props = [props = "Name=Longsword +1; Damage=1d8+1; Crit=1d6; Keyword=fire;"] [H: input( "foo", "YourName|George Washington|Your name|TEXT", "Weapon|Axe,Sword,Mace|Choose weapon|LIST",
- * "WarCry|Attack!,No surrender!,I give up!|Pick a war cry|LIST|VALUE=STRING select=1" , "CA || Combat advantage|     CHECK|", "props |"+props+"|Weapon properties|PROPS|setvars=true",
+ * "WarCry|Attack!,No surrender!,I give up!|Pick a war cry|LIST|VALUE=STRING select=1" , "CA || Combat advantage|     CHECK|", "props |"+props+"|Weapon properties|PROP|setvars=true",
  * "UsePower |1|Use the power|CHECK", "Weight|light,medium,heavy||RADIO|ORIENT=H select=1", "Ambition|Survive today, Defeat my enemies, Rule the world, Become immortal||RADIO|VALUE=STRING" ,
  * "bar | a, b, c, d, e, f, g , h     ,i  j, k   |Radio button test   |  RADIO       | select=5 value = string ; oRiEnT   =h;;;;" )]<br> <i>New values of variables:</i> <br>foo is [foo] <br>YourName
  * is [YourName] <br>Weapon is [Weapon] <br>WarCry is [WarCry] <br>CA is [CA] <br>props is [props] <br>UsePower is [UsePower] <br>Weight is [Weight] <br>Ambition is [Ambition] <br> <br>Name is [Name],
@@ -1450,7 +1450,7 @@ public class InputFunction extends AbstractFunction {
  *
  * Original props = [props = "Name=Longsword +1; Damage=1d8+1; Crit=1d6; Keyword=fire;"] [h: setPropVars = 1] [H: input( "foo", "YourName|George Washington|Your name|TEXT",
  * "Weapon|Axe,Sword,Mace|Choose weapon|LIST", "WarCry|Attack!,No surrender!,I give up!|Pick a war cry|LIST|VALUE=STRING select=1" , "CA || Combat advantage|     CHECK|",
- * "props |"+props+"|Weapon properties|PROPS|setvars=true", "UsePower |1|Use the power|CHECK", "Weight|light,medium,heavy||RADIO|ORIENT=H select=1",
+ * "props |"+props+"|Weapon properties|PROP|setvars=true", "UsePower |1|Use the power|CHECK", "Weight|light,medium,heavy||RADIO|ORIENT=H select=1",
  * "Ambition|Survive today, Defeat my enemies, Rule the world, Become immortal||RADIO|VALUE=STRING" ,
  * "bar | a, b, c, d, e, f, g , h     ,i  j, k   |Radio button test   |  RADIO       | select=5 value = string ; oRiEnT   =h;;;;" )]<br> <i>New values of variables:</i> <table border=0><tr
  * style='font-weight:bold;'><td>Name&nbsp;&nbsp;&nbsp;</td><td>Value</td></tr> <tr><td>foo&nbsp;&nbsp;&nbsp;</td><td>{foo}</td></tr> <tr><td>YourName&nbsp;&nbsp;&nbsp;</td><td>{YourName}</td></tr>

@@ -16,6 +16,7 @@ package net.rptools.maptool.client;
 
 import com.google.common.eventbus.Subscribe;
 import java.util.concurrent.TimeUnit;
+import javax.swing.*;
 import net.rptools.maptool.client.events.CampaignActivated;
 import net.rptools.maptool.events.MapToolEventBus;
 import net.rptools.maptool.model.Campaign;
@@ -48,13 +49,19 @@ public class LoadServerOnStartup {
   }
 
   @Subscribe
-  private void doLoadServer(CampaignActivated campaignActivated) throws InterruptedException {
+  private void doLoadServer(CampaignActivated campaignActivated) {
     Campaign campaign = campaignActivated.campaign();
     if (!campaign.isDefaultCampaign()) {
       log.info("Start Server Begin for Campaign: {}", campaign.getName());
       MapTool.startServerAndConnectFromPreferences();
-      TimeUnit.SECONDS.sleep(30);
       log.info("Start Server End for Campaign: {}", campaign.getName());
+      try {
+        log.info("LOAD_SERVER_DELAY {} start", AppProperties.getLoadServerDelay());
+        TimeUnit.SECONDS.sleep(AppProperties.getLoadServerDelay());
+        log.info("LOAD_SERVER_DELAY end");
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
       new MapToolEventBus().getMainEventBus().unregister(this);
     }
   }

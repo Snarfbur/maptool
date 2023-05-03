@@ -20,15 +20,55 @@ import net.rptools.maptool.language.I18N;
 import net.rptools.maptool.util.StringUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.util.Strings;
 
 /**
- * Properties for the application MapTool. Some of them are OS depending and not changable. Others
- * can be change in one or more places with a clear priority from (low -> high) Default_Value ->
+ * Properties for the application MapTool. Some of them are OS depending and not changeable. Others
+ * can be change in one or more places with a clear priority from (low -> high): Default_Value ->
  * System_Properties -> StartUp_Properties -> CmdLineOptions
+ *
+ * <p>All application properties should be accessed through this class! This does not include the
+ * (user) preferences (AppPreferences) and currently also not the 'normal' system properties
+ * (UserJvmOptions)
  */
 public class AppProperties {
 
-  public enum PROPS {
+  public enum LOAD_AUTOSAVE_VALUE {
+    YES,
+    NO,
+    ASK;
+
+    LOAD_AUTOSAVE_VALUE() {}
+    ;
+
+    /**
+     * Returns the corresponding enum to the string Only the first letter of the string has to be
+     * equal to the first letter of the enum name The compare is not case-sensitive. Default return
+     * value is ASK!
+     *
+     * @param value to compare
+     * @return corresponding enum value
+     */
+    public static LOAD_AUTOSAVE_VALUE fromString(String value) {
+      if (Strings.isEmpty(value)) return DEFAULT_VALUE;
+
+      char compare = value.toUpperCase().charAt(0);
+      return switch (compare) {
+        case 'Y' -> YES;
+        case 'N' -> NO;
+        case 'A' -> ASK;
+        default -> DEFAULT_VALUE;
+      };
+    }
+
+    public static final LOAD_AUTOSAVE_VALUE DEFAULT_VALUE = ASK;
+
+    public String getValue() {
+      return this.name();
+    }
+  }
+
+  public enum PROP {
     OS_NAME("os.name", null, null),
     USER_HOME("user.home", null, null),
     DATA_DIR_NAME("MAPTOOL_DATADIR", "datadir", ".maptool"),
@@ -47,7 +87,9 @@ public class AppProperties {
     WINDOW_XPOS(null, "xpos", "-1"),
     WINDOW_YPOS(null, "ypos", "-1"),
     LOAD_SERVER_FLAG("", "server", "false"),
+    LOAD_SERVER_DELAY("", "server-delay", "0"),
     LOAD_CAMPAIGN_NAME("", "campaign", null),
+    LOAD_AUTOSAVE_FILE("", "autosave", LOAD_AUTOSAVE_VALUE.DEFAULT_VALUE.name()),
     @Deprecated
     DEPRECATED_LOAD_CAMPAIGN_NAME(null, "file", null),
     STARTUP_PROPS_FILE_NAME("MAPTOOL_STARTUP_FILE", "props-file", "startup.properties"),
@@ -56,7 +98,7 @@ public class AppProperties {
     LOCALE_REGION("user.region", null, Locale.getDefault().getCountry());
     private final String key, cmdLongOpt, defaultValue;
 
-    PROPS(String key, String cmdLongOpt, String defaultValue) {
+    PROP(String key, String cmdLongOpt, String defaultValue) {
       this.key = key;
       this.cmdLongOpt = cmdLongOpt;
       this.defaultValue = defaultValue;
@@ -70,7 +112,9 @@ public class AppProperties {
       return (key != null && key.isEmpty()) ? name() : key;
     }
 
-    /** @return the long option name or null if there is no command option */
+    /**
+     * @return the long option name or null if there is no command option
+     */
     public String getCmdLongOpt() {
       return cmdLongOpt;
     }
@@ -81,6 +125,10 @@ public class AppProperties {
 
     public int getDefaultIntValue() {
       return StringUtil.parseInteger(defaultValue, -1);
+    }
+
+    public LOAD_AUTOSAVE_VALUE getDefaultLoadAutosaveValue() {
+      return LOAD_AUTOSAVE_VALUE.fromString(PROP.LOAD_AUTOSAVE_FILE.defaultValue);
     }
   }
 
@@ -99,12 +147,11 @@ public class AppProperties {
     if (startupPropsFileName != null) return;
     startupPropsFileNameOriginal =
         System.getProperty(
-            PROPS.STARTUP_PROPS_FILE_NAME.getKey(),
-            PROPS.STARTUP_PROPS_FILE_NAME.getDefaultValue());
+            PROP.STARTUP_PROPS_FILE_NAME.getKey(), PROP.STARTUP_PROPS_FILE_NAME.getDefaultValue());
     try {
       startupPropsFileNameOriginal =
           AppCmdLineProperties.getCommandLineOption(
-              PROPS.STARTUP_PROPS_FILE_NAME.getCmdLongOpt(), startupPropsFileNameOriginal);
+              PROP.STARTUP_PROPS_FILE_NAME.getCmdLongOpt(), startupPropsFileNameOriginal);
     } catch (NullPointerException e) {
       // CmdLineProperties has problems, which will be handled during logger initialisation, so we
       // ignore it.
@@ -149,14 +196,14 @@ public class AppProperties {
     Locale.setDefault(
         new Locale(
             AppStartupProperties.getStartupProperty(
-                PROPS.LOCALE_LANGUAGE.getKey(), PROPS.LOCALE_LANGUAGE.getDefaultValue()),
+                PROP.LOCALE_LANGUAGE.getKey(), PROP.LOCALE_LANGUAGE.getDefaultValue()),
             AppStartupProperties.getStartupProperty(
-                PROPS.LOCALE_REGION.getKey(), PROPS.LOCALE_REGION.getDefaultValue())));
+                PROP.LOCALE_REGION.getKey(), PROP.LOCALE_REGION.getDefaultValue())));
     log.info("Default locale initialized to: {}", Locale.getDefault());
   }
 
   public static String getOsName() {
-    return System.getProperty(PROPS.OS_NAME.getKey());
+    return System.getProperty(PROP.OS_NAME.getKey());
   }
 
   /** Returns true if currently running on a Windows based operating system. */
@@ -179,7 +226,7 @@ public class AppProperties {
   }
 
   public static String getUserHomeName() {
-    return System.getProperty(PROPS.USER_HOME.getKey());
+    return System.getProperty(PROP.USER_HOME.getKey());
   }
 
   /**
@@ -198,14 +245,14 @@ public class AppProperties {
   public static String getDataDirName() {
     if (dataDirPathName != null) return dataDirPathName;
     dataDirPathName =
-        System.getProperty(PROPS.DATA_DIR_NAME.getKey(), PROPS.DATA_DIR_NAME.getDefaultValue());
+        System.getProperty(PROP.DATA_DIR_NAME.getKey(), PROP.DATA_DIR_NAME.getDefaultValue());
     if (startupPropsFilePropValueAbsolute) {
       dataDirPathName =
-          AppStartupProperties.getStartupProperty(PROPS.DATA_DIR_NAME.getKey(), dataDirPathName);
+          AppStartupProperties.getStartupProperty(PROP.DATA_DIR_NAME.getKey(), dataDirPathName);
     }
     dataDirPathName =
         AppCmdLineProperties.getCommandLineOption(
-            PROPS.DATA_DIR_NAME.getCmdLongOpt(), dataDirPathName);
+            PROP.DATA_DIR_NAME.getCmdLongOpt(), dataDirPathName);
 
     if (!(dataDirPathName.contains(File.separator)
         || dataDirPathName.contains("/")
@@ -243,9 +290,9 @@ public class AppProperties {
   public static String getLogDirName() {
     if (logDirPathName != null) return logDirPathName;
     logDirPathName =
-        System.getProperty(PROPS.LOG_DIR_NAME.getKey(), PROPS.LOG_DIR_NAME.getDefaultValue());
+        System.getProperty(PROP.LOG_DIR_NAME.getKey(), PROP.LOG_DIR_NAME.getDefaultValue());
     logDirPathName =
-        AppStartupProperties.getStartupProperty(PROPS.LOG_DIR_NAME.getKey(), logDirPathName);
+        AppStartupProperties.getStartupProperty(PROP.LOG_DIR_NAME.getKey(), logDirPathName);
 
     if (!(logDirPathName.contains(File.separator)
         || logDirPathName.contains("/")
@@ -265,7 +312,7 @@ public class AppProperties {
       throw new RuntimeException(I18N.getText("msg.error.unusableDataDir", logDirPathName));
     }
 
-    System.setProperty(PROPS.LOG_DIR_NAME.getKey(), logDirPathName);
+    System.setProperty(PROP.LOG_DIR_NAME.getKey(), logDirPathName);
 
     return logDirPathName;
   }
@@ -299,80 +346,103 @@ public class AppProperties {
     return startupPropsFileName;
   }
 
-  /** @return Name of the subdir for temporary files. */
+  /**
+   * @return Name of the subdir for temporary files.
+   */
   public static String getTmpSubDirName() {
-    return PROPS.TEMP_SUBDIR_NAME.getDefaultValue();
+    return PROP.TEMP_SUBDIR_NAME.getDefaultValue();
   }
 
-  /** @return Name of the subdir for configuration files. */
+  /**
+   * @return Name of the subdir for configuration files.
+   */
   public static String getConfigSubDirName() {
-    return PROPS.CONFIG_SUBDIR_NAME.getDefaultValue();
+    return PROP.CONFIG_SUBDIR_NAME.getDefaultValue();
   }
 
   public static boolean getDebugFlag() {
-    return AppCmdLineProperties.getCommandLineOption(PROPS.DEBUG_FLAG.getCmdLongOpt());
+    return AppCmdLineProperties.getCommandLineOption(PROP.DEBUG_FLAG.getCmdLongOpt());
   }
 
-  /** @return A Version string, which overwrites the normal version default null. */
+  /**
+   * @return A Version string, which overwrites the normal version default null.
+   */
   public static String getVersionOverwrite() {
     return AppCmdLineProperties.getCommandLineOption(
-        PROPS.VERSION_OVERWRITE.getCmdLongOpt(), PROPS.VERSION_OVERWRITE.getDefaultValue());
+        PROP.VERSION_OVERWRITE.getCmdLongOpt(), PROP.VERSION_OVERWRITE.getDefaultValue());
   }
 
   public static boolean getFullscreenFlag() {
-    return AppStartupProperties.getStartupProperty(PROPS.FULLSCREEN_FLAG.getKey())
-        || AppCmdLineProperties.getCommandLineOption(PROPS.FULLSCREEN_FLAG.getCmdLongOpt());
+    return AppStartupProperties.getStartupProperty(PROP.FULLSCREEN_FLAG.getKey())
+        || AppCmdLineProperties.getCommandLineOption(PROP.FULLSCREEN_FLAG.getCmdLongOpt());
   }
 
   public static int getMonitorToUse() {
     return AppCmdLineProperties.getCommandLineOption(
-        PROPS.MONITOR_TO_USE.getCmdLongOpt(), PROPS.MONITOR_TO_USE.getDefaultIntValue());
+        PROP.MONITOR_TO_USE.getCmdLongOpt(), PROP.MONITOR_TO_USE.getDefaultIntValue());
   }
 
   public static int getWindowWidth() {
     return AppCmdLineProperties.getCommandLineOption(
-        PROPS.WINDOW_WIDTH.getCmdLongOpt(), PROPS.WINDOW_WIDTH.getDefaultIntValue());
+        PROP.WINDOW_WIDTH.getCmdLongOpt(), PROP.WINDOW_WIDTH.getDefaultIntValue());
   }
 
   public static int getWindowHeight() {
     return AppCmdLineProperties.getCommandLineOption(
-        PROPS.WINDOW_HEIGHT.getCmdLongOpt(), PROPS.WINDOW_HEIGHT.getDefaultIntValue());
+        PROP.WINDOW_HEIGHT.getCmdLongOpt(), PROP.WINDOW_HEIGHT.getDefaultIntValue());
   }
 
   public static int getWindowXpos() {
     return AppCmdLineProperties.getCommandLineOption(
-        PROPS.WINDOW_XPOS.getCmdLongOpt(), PROPS.WINDOW_XPOS.getDefaultIntValue());
+        PROP.WINDOW_XPOS.getCmdLongOpt(), PROP.WINDOW_XPOS.getDefaultIntValue());
   }
 
   public static int getWindowYpos() {
     return AppCmdLineProperties.getCommandLineOption(
-        PROPS.WINDOW_YPOS.getCmdLongOpt(), PROPS.WINDOW_YPOS.getDefaultIntValue());
+        PROP.WINDOW_YPOS.getCmdLongOpt(), PROP.WINDOW_YPOS.getDefaultIntValue());
   }
 
   public static boolean getListMacrosFlag() {
-    return AppCmdLineProperties.getCommandLineOption(PROPS.LIST_MACROS_FLAG.getCmdLongOpt());
+    return AppCmdLineProperties.getCommandLineOption(PROP.LIST_MACROS_FLAG.getCmdLongOpt());
   }
 
   public static boolean getResetFlag() {
-    return AppCmdLineProperties.getCommandLineOption(PROPS.RESET_FLAG.getCmdLongOpt());
+    return AppCmdLineProperties.getCommandLineOption(PROP.RESET_FLAG.getCmdLongOpt());
   }
 
-  /** @return Name of the campaign, with should be load at startup, default null. */
+  /**
+   * @return Name of the campaign, with should be load at startup, default null.
+   */
   public static String getLoadCampaignName() {
     return AppCmdLineProperties.getCommandLineOption(
-        PROPS.LOAD_CAMPAIGN_NAME.getCmdLongOpt(),
+        PROP.LOAD_CAMPAIGN_NAME.getCmdLongOpt(),
         AppCmdLineProperties.getCommandLineOption(
-            PROPS.DEPRECATED_LOAD_CAMPAIGN_NAME.getCmdLongOpt(),
+            PROP.DEPRECATED_LOAD_CAMPAIGN_NAME.getCmdLongOpt(),
             AppStartupProperties.getStartupProperty(
-                PROPS.LOAD_CAMPAIGN_NAME.getKey(), PROPS.LOAD_CAMPAIGN_NAME.getDefaultValue())));
+                PROP.LOAD_CAMPAIGN_NAME.getKey(), PROP.LOAD_CAMPAIGN_NAME.getDefaultValue())));
   }
 
   public static boolean getLoadServerFlag() {
-    return AppStartupProperties.getStartupProperty(PROPS.LOAD_SERVER_FLAG.getKey())
-        || AppCmdLineProperties.getCommandLineOption(PROPS.LOAD_SERVER_FLAG.getCmdLongOpt());
+    return AppStartupProperties.getStartupProperty(PROP.LOAD_SERVER_FLAG.getKey())
+        || AppCmdLineProperties.getCommandLineOption(PROP.LOAD_SERVER_FLAG.getCmdLongOpt());
+  }
+
+  public static int getLoadServerDelay() {
+    return AppCmdLineProperties.getCommandLineOption(
+        PROP.LOAD_SERVER_DELAY.getCmdLongOpt(),
+        AppStartupProperties.getStartupProperty(
+            PROP.LOAD_SERVER_DELAY.getKey(), PROP.LOAD_SERVER_DELAY.getDefaultIntValue()));
   }
 
   public static boolean getSkipAutoUpdateFlag() {
-    return AppStartupProperties.getStartupProperty(PROPS.SKIP_AUTO_UPDATE_FLAG.getKey());
+    return AppStartupProperties.getStartupProperty(PROP.SKIP_AUTO_UPDATE_FLAG.getKey());
+  }
+
+  public static LOAD_AUTOSAVE_VALUE getLoadAutoSave() {
+    return LOAD_AUTOSAVE_VALUE.fromString(
+        AppCmdLineProperties.getCommandLineOption(
+            PROP.LOAD_AUTOSAVE_FILE.getCmdLongOpt(),
+            AppStartupProperties.getStartupProperty(
+                PROP.LOAD_AUTOSAVE_FILE.getKey(), PROP.LOAD_AUTOSAVE_FILE.getDefaultValue())));
   }
 }

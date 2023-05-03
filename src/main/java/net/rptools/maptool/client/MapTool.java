@@ -49,6 +49,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import javax.crypto.NoSuchPaddingException;
 import javax.imageio.ImageIO;
 import javax.imageio.spi.IIORegistry;
@@ -1554,10 +1555,6 @@ public class MapTool {
       log.info("Loading initial campaign: " + AppProperties.getLoadCampaignName());
       File campaignFile = new File(AppProperties.getLoadCampaignName());
       if (campaignFile.exists()) AppActions.loadCampaign(campaignFile);
-    } else if (AppProperties.getLoadServerFlag()) {
-      // Default campaign is not loaded and must handle different
-      log.info("Load server for default campaign.");
-      startServerAndConnectFromPreferences();
     }
 
     // fire up autosaves
@@ -1574,6 +1571,20 @@ public class MapTool {
         .getCurrentZoneRenderer()
         .getZone()
         .setTopologyTypes(AppPreferences.getTopologyTypes());
+
+    if (AppProperties.getLoadCampaignName() == null && AppProperties.getLoadServerFlag()) {
+      // Default campaign is not loaded and must handle different
+      log.info("Start Server Begin for Campaign: {}", campaign.getName());
+      MapTool.startServerAndConnectFromPreferences();
+      log.info("Start Server End for Campaign: {}", campaign.getName());
+      try {
+        log.info("LOAD_SERVER_DELAY {} start", AppProperties.getLoadServerDelay());
+        TimeUnit.SECONDS.sleep(AppProperties.getLoadServerDelay());
+        log.info("LOAD_SERVER_DELAY end");
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   /**

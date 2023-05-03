@@ -21,6 +21,11 @@ import org.apache.commons.cli.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+/**
+ * To access application properties, please use AppProperties! This is a helper class for
+ * AppProperties and should never be used directly. It handles the values set as arguments (command
+ * line options) to the application.
+ */
 public class AppCmdLineProperties {
 
   private static Logger log;
@@ -34,79 +39,89 @@ public class AppCmdLineProperties {
     cmdOptions = new Options();
     cmdOptions.addOption(
         "?",
-        AppProperties.PROPS.CMD_OPTIONS_HELP.getCmdLongOpt(),
+        AppProperties.PROP.CMD_OPTIONS_HELP.getCmdLongOpt(),
         false,
         "list of options incl. description to log and information frame, then exit the application");
     cmdOptions.addOption(
         "d",
-        AppProperties.PROPS.DEBUG_FLAG.getCmdLongOpt(),
+        AppProperties.PROP.DEBUG_FLAG.getCmdLongOpt(),
         false,
         "turn on System.out enhanced debug output");
     cmdOptions.addOption(
         "v",
-        AppProperties.PROPS.VERSION_OVERWRITE.getCmdLongOpt(),
+        AppProperties.PROP.VERSION_OVERWRITE.getCmdLongOpt(),
         true,
         "override MapTool version. Some MapTool functions will break if the version is not set correct!");
     cmdOptions.addOption(
-        "f", AppProperties.PROPS.FULLSCREEN_FLAG.getCmdLongOpt(), false, "set to maximize window");
+        "f", AppProperties.PROP.FULLSCREEN_FLAG.getCmdLongOpt(), false, "set to maximize window");
     cmdOptions.addOption(
         "g",
-        AppProperties.PROPS.MONITOR_TO_USE.getCmdLongOpt(),
+        AppProperties.PROP.MONITOR_TO_USE.getCmdLongOpt(),
         true,
         "sets which monitor (graphical device) to use");
     cmdOptions.addOption(
         "w",
-        AppProperties.PROPS.WINDOW_WIDTH.getCmdLongOpt(),
+        AppProperties.PROP.WINDOW_WIDTH.getCmdLongOpt(),
         true,
         "override MapTool window width. Only usable together with monitor and height");
     cmdOptions.addOption(
         "h",
-        AppProperties.PROPS.WINDOW_HEIGHT.getCmdLongOpt(),
+        AppProperties.PROP.WINDOW_HEIGHT.getCmdLongOpt(),
         true,
         "override MapTool window height. Only usable together with monitor and width");
     cmdOptions.addOption(
         "x",
-        AppProperties.PROPS.WINDOW_XPOS.getCmdLongOpt(),
+        AppProperties.PROP.WINDOW_XPOS.getCmdLongOpt(),
         true,
         "override MapTool window starting x coordinate. Only usable together with monitor and ypos");
     cmdOptions.addOption(
         "y",
-        AppProperties.PROPS.WINDOW_YPOS.getCmdLongOpt(),
+        AppProperties.PROP.WINDOW_YPOS.getCmdLongOpt(),
         true,
         "override MapTool window starting y coordinate. Only usable together with monitor and xpos");
     cmdOptions.addOption(
         "m",
-        AppProperties.PROPS.LIST_MACROS_FLAG.getCmdLongOpt(),
+        AppProperties.PROP.LIST_MACROS_FLAG.getCmdLongOpt(),
         false,
         "display defined list of macro functions");
     cmdOptions.addOption(
         "r",
-        AppProperties.PROPS.RESET_FLAG.getCmdLongOpt(),
+        AppProperties.PROP.RESET_FLAG.getCmdLongOpt(),
         false,
         "reset startup options to defaults");
     cmdOptions.addOption(
         "F",
-        AppProperties.PROPS.DEPRECATED_LOAD_CAMPAIGN_NAME.getCmdLongOpt(),
+        AppProperties.PROP.DEPRECATED_LOAD_CAMPAIGN_NAME.getCmdLongOpt(),
         true,
         "load campaign on startup. Deprecated: Please use C or campaign");
     cmdOptions.addOption(
         "C",
-        AppProperties.PROPS.LOAD_CAMPAIGN_NAME.getCmdLongOpt(),
+        AppProperties.PROP.LOAD_CAMPAIGN_NAME.getCmdLongOpt(),
         true,
         "load campaign on startup. Arg.: Full file path and name of the campaign");
     cmdOptions.addOption(
         "S",
-        AppProperties.PROPS.LOAD_SERVER_FLAG.getCmdLongOpt(),
+        AppProperties.PROP.LOAD_SERVER_FLAG.getCmdLongOpt(),
         false,
         "start server on startup. Using server parameters from user preferences");
     cmdOptions.addOption(
+        "s",
+        AppProperties.PROP.LOAD_SERVER_DELAY.getCmdLongOpt(),
+        false,
+        "Delay the start of the server for x seconds. Work-a-round for concurrency problems");
+    cmdOptions.addOption(
+        "A",
+        AppProperties.PROP.LOAD_AUTOSAVE_FILE.getCmdLongOpt(),
+        false,
+        "If there is a newer autosave file then the campaign to load, should the app load it (yes), not load it (no) or ask (ask) for the decision (default is ask)");
+    cmdOptions.addOption(
         "D",
-        AppProperties.PROPS.DATA_DIR_NAME.getCmdLongOpt(),
+        AppProperties.PROP.DATA_DIR_NAME.getCmdLongOpt(),
         true,
         "override MapTool data dictionary");
     cmdOptions.addOption(
         "P",
-        AppProperties.PROPS.STARTUP_PROPS_FILE_NAME.getCmdLongOpt(),
+        AppProperties.PROP.STARTUP_PROPS_FILE_NAME.getCmdLongOpt(),
         true,
         "override name (& path) of the startup properties file");
 
@@ -145,7 +160,7 @@ public class AppCmdLineProperties {
     log = LogManager.getLogger(AppCmdLineProperties.class);
     parse(); // parse can be done twice, same result, almost no time consumed and now we can show
     // warn & write log
-    if (cmd.hasOption(AppProperties.PROPS.CMD_OPTIONS_HELP.getCmdLongOpt())) helpInfo();
+    if (cmd.hasOption(AppProperties.PROP.CMD_OPTIONS_HELP.getCmdLongOpt())) helpInfo();
   }
 
   /**

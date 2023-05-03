@@ -73,7 +73,9 @@ public class AppUtil {
    */
   @Deprecated public static boolean LINUX_OR_UNIX = AppProperties.isUnixOs();
 
-  /** @deprecated Not used anywhere? If usefull later, please set comment, otherwise remove it */
+  /**
+   * @deprecated Not used anywhere? If usefull later, please set comment, otherwise remove it
+   */
   @Deprecated
   public static final String LOOK_AND_FEEL_NAME =
       MAC_OS_X

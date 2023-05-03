@@ -25,21 +25,28 @@ import net.rptools.maptool.util.StringUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+/**
+ * To access application properties, please use AppProperties! This is a helper class for
+ * AppProperties and should never be used directly. It handles the startup properties file and the
+ * values in this file.
+ */
 public class AppStartupProperties {
   private static Logger log;
   private static IOException catchedIOException;
   private static final String KEY_NOT_FOUND = "<key not found>";
 
-  private static final Set<AppProperties.PROPS> allowedProps =
+  private static final Set<AppProperties.PROP> allowedProps =
       EnumSet.of(
-          AppProperties.PROPS.DATA_DIR_NAME,
-          AppProperties.PROPS.LOG_DIR_NAME,
-          AppProperties.PROPS.LOAD_SERVER_FLAG,
-          AppProperties.PROPS.LOAD_CAMPAIGN_NAME,
-          AppProperties.PROPS.LOCALE_LANGUAGE,
-          AppProperties.PROPS.LOCALE_REGION,
-          AppProperties.PROPS.FULLSCREEN_FLAG,
-          AppProperties.PROPS.SKIP_AUTO_UPDATE_FLAG);
+          AppProperties.PROP.DATA_DIR_NAME,
+          AppProperties.PROP.LOG_DIR_NAME,
+          AppProperties.PROP.LOAD_SERVER_FLAG,
+          AppProperties.PROP.LOAD_SERVER_DELAY,
+          AppProperties.PROP.LOAD_CAMPAIGN_NAME,
+          AppProperties.PROP.LOAD_AUTOSAVE_FILE,
+          AppProperties.PROP.LOCALE_LANGUAGE,
+          AppProperties.PROP.LOCALE_REGION,
+          AppProperties.PROP.FULLSCREEN_FLAG,
+          AppProperties.PROP.SKIP_AUTO_UPDATE_FLAG);
   private static HashSet<String> allowedKeys = new HashSet<>();
   private static Properties startupProps;
 
@@ -65,14 +72,14 @@ public class AppStartupProperties {
 
     // log allowed & found values
     String key, value;
-    for (AppProperties.PROPS prop : allowedProps) {
+    for (AppProperties.PROP prop : allowedProps) {
       key = prop.getKey();
       allowedKeys.add(key);
       value = startupProps.getProperty(key);
       if (value == null) value = KEY_NOT_FOUND;
       // Show value as in file as a String
       log.info("Usable keys in startup.properties: {}, value found: {}", key, value);
-      if (prop == AppProperties.PROPS.DATA_DIR_NAME
+      if (prop == AppProperties.PROP.DATA_DIR_NAME
           && !KEY_NOT_FOUND.equals(value)
           && !AppProperties.isStartupPropsFilePropValueAbsolute()) {
         log.info(
