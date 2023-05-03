@@ -23,8 +23,11 @@ import javax.swing.ListSelectionModel;
 import net.rptools.maptool.client.MapTool;
 import net.rptools.maptool.client.swing.AbeillePanel;
 import net.rptools.maptool.model.Zone;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class LayerSelectionDialog extends JPanel {
+  private static final Logger log = LogManager.getLogger(LayerSelectionDialog.class);
 
   private final AbeillePanel panel;
   private JList<Zone.Layer> list;
@@ -52,8 +55,11 @@ public class LayerSelectionDialog extends JPanel {
   }
 
   public void updateViewList() {
-    getLayerList()
-        .setSelectedValue(MapTool.getFrame().getCurrentZoneRenderer().getActiveLayer(), true);
+    if (MapTool.getFrame().getCurrentZoneRenderer() != null) {
+      getLayerList().setSelectedValue(
+          MapTool.getFrame().getCurrentZoneRenderer().getActiveLayer(), 
+          true);
+    }
   }
 
   private JList<Zone.Layer> getLayerList() {
