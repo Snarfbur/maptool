@@ -56,9 +56,8 @@ public class LayerSelectionDialog extends JPanel {
 
   public void updateViewList() {
     if (MapTool.getFrame().getCurrentZoneRenderer() != null) {
-      getLayerList().setSelectedValue(
-          MapTool.getFrame().getCurrentZoneRenderer().getActiveLayer(), 
-          true);
+      getLayerList()
+          .setSelectedValue(MapTool.getFrame().getCurrentZoneRenderer().getActiveLayer(), true);
     }
   }
 
