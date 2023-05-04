@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import net.rptools.maptool.util.StringUtil;
 import org.apache.commons.cli.*;
+import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -108,12 +109,12 @@ public class AppCmdLineProperties {
         "s",
         AppProperties.PROP.LOAD_SERVER_DELAY.getCmdLongOpt(),
         false,
-        "Delay the start of the server for x seconds. Work-a-round for concurrency problems");
+        "delay the start of the server for x seconds. e.g. network needs more time to be ready");
     cmdOptions.addOption(
         "A",
         AppProperties.PROP.LOAD_AUTOSAVE_FILE.getCmdLongOpt(),
-        false,
-        "If there is a newer autosave file then the campaign to load, should the app load it (yes), not load it (no) or ask (ask) for the decision (default is ask)");
+        true,
+        "if there is a newer autosave file then the campaign to load, should the app load it (yes), not load it (no) or ask (ask) for the decision (default is ask)");
     cmdOptions.addOption(
         "D",
         AppProperties.PROP.DATA_DIR_NAME.getCmdLongOpt(),
@@ -220,6 +221,8 @@ public class AppCmdLineProperties {
     String longOptionTitle = "Long Option";
     String startInfoLine = "List of available command line options:";
     String endInfoLine = "Application will stop now!";
+    String lineSeparator = System.lineSeparator();
+    String lineBreak = "<br>";
 
     int maxLongOptionLength = longOptionTitle.length();
     int longOptionLength = 0;
@@ -230,14 +233,15 @@ public class AppCmdLineProperties {
 
     StringBuilder messageBuilder = new StringBuilder();
     String message;
-    messageBuilder.append(startInfoLine).append(System.lineSeparator());
+
+    messageBuilder.append(startInfoLine).append(lineSeparator);
     message =
         String.format(
             "X | %s | Description",
             new StringBuilder(longOptionTitle)
                 .append(" ".repeat(maxLongOptionLength - longOptionTitle.length()))
                 .toString());
-    messageBuilder.append(message).append(System.lineSeparator());
+    messageBuilder.append(message).append(lineSeparator);
     for (Option option : cmdOptions.getOptions()) {
       longOptionLength = option.getLongOpt().length();
       longOption =
@@ -245,10 +249,14 @@ public class AppCmdLineProperties {
               .append(" ".repeat(maxLongOptionLength - longOptionLength))
               .toString();
       message = String.format("%s | %s | %s", option.getOpt(), longOption, option.getDescription());
-      messageBuilder.append(message).append(System.lineSeparator());
+      messageBuilder.append(message).append(lineSeparator);
     }
-    messageBuilder.append(endInfoLine);
-    MapTool.showInformation(messageBuilder.toString());
+    messageBuilder.append(endInfoLine).append(lineSeparator);
+    log.info(messageBuilder.toString());
+    String infoMessage =
+        StringUtils.replaceEach(
+            messageBuilder.toString(), new String[] {lineSeparator}, new String[] {lineBreak});
+    MapTool.showInformation(infoMessage);
 
     System.exit(0);
   }
