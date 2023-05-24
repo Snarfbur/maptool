@@ -62,7 +62,10 @@ import net.rptools.lib.TaskBarFlasher;
 import net.rptools.lib.image.ThumbnailManager;
 import net.rptools.lib.net.RPTURLStreamHandlerFactory;
 import net.rptools.lib.sound.SoundManager;
-import net.rptools.maptool.client.events.*;
+import net.rptools.maptool.client.events.ChatMessageAdded;
+import net.rptools.maptool.client.events.PlayerConnected;
+import net.rptools.maptool.client.events.PlayerDisconnected;
+import net.rptools.maptool.client.events.ServerStopped;
 import net.rptools.maptool.client.functions.UserDefinedMacroFunctions;
 import net.rptools.maptool.client.swing.MapToolEventQueue;
 import net.rptools.maptool.client.swing.NoteFrame;
@@ -90,7 +93,12 @@ import net.rptools.maptool.model.TextMessage;
 import net.rptools.maptool.model.Zone;
 import net.rptools.maptool.model.ZoneFactory;
 import net.rptools.maptool.model.library.url.LibraryURLStreamHandler;
-import net.rptools.maptool.model.player.*;
+import net.rptools.maptool.model.player.LocalPlayer;
+import net.rptools.maptool.model.player.Player;
+import net.rptools.maptool.model.player.PlayerDatabase;
+import net.rptools.maptool.model.player.PlayerDatabaseFactory;
+import net.rptools.maptool.model.player.PlayerZoneListener;
+import net.rptools.maptool.model.player.Players;
 import net.rptools.maptool.model.zones.TokensAdded;
 import net.rptools.maptool.model.zones.TokensRemoved;
 import net.rptools.maptool.model.zones.ZoneAdded;
@@ -102,15 +110,23 @@ import net.rptools.maptool.server.ServerConfig;
 import net.rptools.maptool.server.ServerPolicy;
 import net.rptools.maptool.transfer.AssetTransferManager;
 import net.rptools.maptool.util.MessageUtil;
-import net.rptools.maptool.util.PasswordGenerator;
+import net.rptools.maptool.util.StringUtil;
 import net.rptools.maptool.util.UPnPUtil;
 import net.rptools.maptool.util.UserJvmOptions;
 import net.rptools.maptool.webapi.MTWebAppServer;
 import net.rptools.parser.ParserException;
 import net.tsc.servicediscovery.ServiceAnnouncer;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.appender.FileAppender;
+import org.apache.logging.log4j.core.appender.RollingFileAppender;
 import org.apache.logging.log4j.core.config.Configurator;
 
 /** */
@@ -190,6 +206,7 @@ public class MapTool {
     } else {
       msg = I18N.getText(msgKey) + "<br/>" + t.toString();
     }
+    msg = msg.replace("\n", "<br/>");
     return msg;
   }
 
@@ -1571,6 +1588,29 @@ public class MapTool {
         .getCurrentZoneRenderer()
         .getZone()
         .setTopologyTypes(AppPreferences.getTopologyTypes());
+
+    final var enabledDeveloperOptions = DeveloperOptions.getEnabledOptions();
+    if (!enabledDeveloperOptions.isEmpty()) {
+      final var message = new StringBuilder();
+      message
+          .append("<p>")
+          .append(I18N.getText("Preferences.developer.info.developerOptionsInUse"))
+          .append("</p><ul>");
+      for (final var option : enabledDeveloperOptions) {
+        message.append("<li>").append(option.getLabel()).append("</li>");
+      }
+      message
+          .append("</ul><p>")
+          .append(
+              I18N.getText(
+                  "Preferences.developer.info.developerOptionsInUsePost",
+                  I18N.getText("menu.edit"),
+                  I18N.getText("action.preferences"),
+                  I18N.getText("Preferences.tab.developer")))
+          .append("</p>");
+
+      showWarning(message.toString());
+    }
 
     if (AppProperties.getLoadCampaignName() == null && AppProperties.getLoadServerFlag()) {
       // Default campaign is not loaded and must handle different
